@@ -63,12 +63,21 @@ footer{text-align:center;padding:24px 16px;border-top:1px solid var(--br);color:
 </footer>
 <script>
 const DEFAULT_PRIV=`no data.`;
-(function(){
+async function loadPrivacyDoc(){
+  try{
+    const res=await fetch('/api/legal-doc?key=privacy');
+    const data=await res.json();
+    if(res.ok&&data.ok!==false&&data.content){
+      document.getElementById('privBody').innerHTML=data.content;
+      return;
+    }
+  }catch(e){}
   try{
     const s=localStorage.getItem('ic_privacy');
     document.getElementById('privBody').innerHTML=s||DEFAULT_PRIV;
   }catch(e){document.getElementById('privBody').innerHTML=DEFAULT_PRIV;}
-})();
+}
+loadPrivacyDoc();
 </script>
 </body>
 </html>

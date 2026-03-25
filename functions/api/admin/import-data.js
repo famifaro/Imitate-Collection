@@ -122,6 +122,33 @@ export async function onRequestPost(context) {
 
   await writeSongsCache(context.env.DB, songs, String(body?.songsUpdatedAt || new Date().toISOString()));
 
+  const tosHtml = typeof body?.tosHtml === 'string' ? body.tosHtml : null;
+  const privacyHtml = typeof body?.privacyHtml === 'string' ? body.privacyHtml : null;
+  if (tosHtml !== null) {
+    await context.env.DB
+      .prepare(
+        `INSERT INTO app_cache (cache_key, payload, updated_at)
+         VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(cache_key) DO UPDATE SET
+           payload = excluded.payload,
+           updated_at = CURRENT_TIMESTAMP`
+      )
+      .bind('legal_tos_html', tosHtml)
+      .run();
+  }
+  if (privacyHtml !== null) {
+    await context.env.DB
+      .prepare(
+        `INSERT INTO app_cache (cache_key, payload, updated_at)
+         VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(cache_key) DO UPDATE SET
+           payload = excluded.payload,
+           updated_at = CURRENT_TIMESTAMP`
+      )
+      .bind('legal_privacy_html', privacyHtml)
+      .run();
+  }
+
   return json({
     ok: true,
     songs: songs.length,

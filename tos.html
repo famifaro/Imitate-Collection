@@ -63,12 +63,21 @@ footer{text-align:center;padding:24px 16px;border-top:1px solid var(--br);color:
 </footer>
 <script>
 const DEFAULT_TOS=`no data`;
-(function(){
+async function loadTosDoc(){
+  try{
+    const res=await fetch('/api/legal-doc?key=tos');
+    const data=await res.json();
+    if(res.ok&&data.ok!==false&&data.content){
+      document.getElementById('tosBody').innerHTML=data.content;
+      return;
+    }
+  }catch(e){}
   try{
     const s=localStorage.getItem('ic_tos');
     document.getElementById('tosBody').innerHTML=s||DEFAULT_TOS;
   }catch(e){document.getElementById('tosBody').innerHTML=DEFAULT_TOS;}
-})();
+}
+loadTosDoc();
 </script>
 </body>
 </html>

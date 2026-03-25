@@ -25,6 +25,14 @@ export async function onRequestGet(context) {
      FROM adv_tag_votes
      ORDER BY video_id, user_id, tag`
   ).all();
+  const tosDoc = await context.env.DB
+    .prepare(`SELECT payload, updated_at FROM app_cache WHERE cache_key = ?`)
+    .bind('legal_tos_html')
+    .first();
+  const privacyDoc = await context.env.DB
+    .prepare(`SELECT payload, updated_at FROM app_cache WHERE cache_key = ?`)
+    .bind('legal_privacy_html')
+    .first();
 
   return json({
     ok: true,
@@ -34,5 +42,9 @@ export async function onRequestGet(context) {
     songs: songsCache?.songs || [],
     tagVotes: tagVotes.results || [],
     advTagVotes: advTagVotes.results || [],
+    tosHtml: String(tosDoc?.payload || ''),
+    tosUpdatedAt: tosDoc?.updated_at || null,
+    privacyHtml: String(privacyDoc?.payload || ''),
+    privacyUpdatedAt: privacyDoc?.updated_at || null,
   });
 }

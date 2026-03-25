@@ -29,7 +29,7 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 .logo-wrap{display:flex;flex-direction:column;line-height:1;}
 .logo-name{font-size:13px;font-weight:700;white-space:nowrap;}
 .logo-sub{font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.05em;white-space:nowrap;}
-.hdr-search{flex:1;max-width:500px;display:flex;align-items:center;background:var(--s1);border:1px solid var(--br);border-radius:24px;height:34px;transition:border-color .2s;}
+.hdr-search{flex:1;max-width:500px;display:flex;align-items:center;background:var(--s1);border:1px solid var(--br);border-radius:24px;height:34px;transition:border-color .2s,width .22s ease,flex-basis .22s ease,margin .22s ease;}
 .hdr-search:focus-within{border-color:var(--br2);}
 .hdr-search input{flex:1;background:none;border:none;outline:none;color:var(--tx);font-size:13px;padding:0 14px;font-family:'Noto Sans JP',sans-serif;}
 .hdr-search input::placeholder{color:var(--tx3);}
@@ -115,7 +115,19 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
   .hdr-menu-btn{display:flex;}
 }
 @media(max-width:640px){
+  .hdr{padding:0 8px;gap:6px;}
   .logo-name{font-size:12px;}
+  .logo{min-width:0;}
+  .logo-wrap{min-width:0;}
+  .hdr-search{flex:0 0 38px;width:38px;min-width:38px;max-width:38px;overflow:hidden;cursor:text;margin-left:auto;}
+  .hdr-search input{padding:0 0 0 2px;font-size:16px;min-width:0;}
+  .hdr-search input::placeholder{opacity:0;}
+  .hdr-search.is-expanded,
+  .hdr-search:focus-within{flex:1 1 100%;width:min(62vw,240px);min-width:min(62vw,240px);max-width:min(62vw,240px);margin-left:0;}
+  .hdr-search.is-expanded input::placeholder,
+  .hdr-search:focus-within input::placeholder{opacity:1;}
+  .hdr-right{gap:4px;}
+  .hdr-menu-btn{width:30px;height:30px;}
   .auth-avatar{width:24px;height:24px;}
   .card-hover-sliders{padding:8px 8px 6px;justify-content:flex-start;gap:4px;}
   .chs-head{font-size:8px;margin-bottom:1px;}
@@ -155,7 +167,7 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 
 /* ═══ CARDS GRID ═══ */
 .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;}
-@media(max-width:480px){.cards-grid{grid-template-columns:repeat(2,1fr);gap:8px;}}
+@media(max-width:640px){.cards-grid{grid-template-columns:1fr;gap:12px;}}
 
 /* ═══ SONG CARD ═══ */
 .song-card{border-radius:8px;overflow:visible;background:var(--bg);transition:transform .2s;cursor:default;}
@@ -382,6 +394,13 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 .exp-side-ft{padding:10px 14px;border-top:1px solid var(--br);display:flex;gap:6px;flex-shrink:0;}
 .modal-hd{flex-shrink:0;}
 .modal-ft{flex-shrink:0;}
+@media(max-width:640px){
+  .exp-modal-wrap{position:relative;max-height:90vh;}
+  .exp-modal-main{width:100%;border-radius:12px;}
+  .exp-modal-side{position:absolute;top:0;right:0;bottom:0;width:100%!important;border:none!important;border-radius:12px;background:var(--bg2);z-index:4;transform:translateX(100%);transition:transform .24s ease;overflow:hidden;}
+  .exp-modal-side.open{transform:translateX(0);}
+  .exp-side-inner{min-width:0;}
+}
 
 /* ─── PLAYER EXPANDABLE ─── */
 .player-overlay{align-items:center;}
@@ -400,6 +419,13 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
   .player-main{max-height:none;width:100%;}
   .player-adv-side{width:100%!important;border-left:none!important;border-top:1px solid var(--br);border-radius:0 0 14px 14px;}
   .player-adv-side.open{width:100%!important;}
+}
+@media(max-width:640px){
+  .player-overlay{padding:8px;}
+  .player-box{width:calc(100vw - 16px);max-height:92vh;position:relative;}
+  .player-main{max-height:92vh;}
+  .player-adv-side{position:absolute;top:0;right:0;bottom:0;width:100%!important;border:none!important;border-radius:14px;background:var(--bg2);z-index:4;transform:translateX(100%);transition:transform .24s ease;}
+  .player-adv-side.open{transform:translateX(0);}
 }
 
 /* ─── SAVED TAGS POPUP ─── */
@@ -856,6 +882,14 @@ async function apiFetch(path, options={}) {
   const data=await res.json().catch(()=>({ok:false,error:'invalid json'}));
   if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
   return data;
+}
+function toggleMobileSearch(forceOpen){
+  const wrap=document.querySelector('.hdr-search');
+  const input=document.getElementById('searchInput');
+  if(!wrap||!input||window.innerWidth>640)return;
+  const open = typeof forceOpen==='boolean' ? forceOpen : !wrap.classList.contains('is-expanded');
+  wrap.classList.toggle('is-expanded',open);
+  if(open) setTimeout(()=>input.focus(),0);
 }
 function applySongState(videoId, tag, likeCount, liked){
   if(videoId&&tag) S.tags[videoId]=tag;
@@ -1696,6 +1730,12 @@ function resetFilters() {
 //  SEARCH
 // ══════════════════════════════════════════
 let searchTimer;
+document.querySelector('.hdr-search').addEventListener('click',function(e){
+  if(window.innerWidth<=640 && !this.classList.contains('is-expanded')){
+    e.preventDefault();
+    toggleMobileSearch(true);
+  }
+});
 document.getElementById('searchInput').addEventListener('input',function(){
   clearTimeout(searchTimer);
   searchTimer=setTimeout(()=>{
@@ -1703,6 +1743,12 @@ document.getElementById('searchInput').addEventListener('input',function(){
     rebuildPool();renderMain();
     S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
   },280);
+});
+document.getElementById('searchInput').addEventListener('focus',()=>toggleMobileSearch(true));
+document.getElementById('searchInput').addEventListener('blur',function(){
+  if(window.innerWidth<=640 && !this.value.trim()){
+    setTimeout(()=>toggleMobileSearch(false),120);
+  }
 });
 
 // ══════════════════════════════════════════
@@ -1834,6 +1880,13 @@ function toggleTagEditAdvSide(){
     renderAdvChips('tagEditAdvBody',currentTagEditVid);
   }
 }
+function openAdvModal(vid){
+  openTagEditModal(vid);
+  requestAnimationFrame(()=>{
+    const side=document.getElementById('tagEditAdvSide');
+    if(side&&!side.classList.contains('open')) toggleTagEditAdvSide();
+  });
+}
 
 function renderAdvChips(bodyId,vid){
   const tag=getTag(vid);
@@ -1841,7 +1894,11 @@ function renderAdvChips(bodyId,vid){
   const body=document.getElementById(bodyId);
   if(!body)return;
   const isEdit=S.sessionVoted.has('adv_'+vid);
-  body.innerHTML='<div class="exp-side-head">高度なタグ'+(isEdit?' <span style="font-size:9px;color:var(--ac2);">(編集中)</span>':'')+'</div>'
+  const closeJs=bodyId==='playerAdvBody'?'togglePlayerAdvSide()':'toggleTagEditAdvSide()';
+  body.innerHTML=`<div class="exp-side-head" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <span>高度なタグ${isEdit?' <span style="font-size:9px;color:var(--ac2);">(編集中)</span>':''}</span>
+      <button type="button" onclick="${closeJs}" style="color:var(--tx3);font-size:16px;line-height:1;padding:2px 4px;">✕</button>
+    </div>`
     +ADV_TAG_GROUPS.map(g=>`
       <div class="adv-group">
         <div class="adv-group-lbl">${escH(g.g)}</div>

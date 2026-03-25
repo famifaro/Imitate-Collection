@@ -343,8 +343,8 @@ button{cursor:pointer;font-family:inherit;border:none;}
           <input id="backupImportFile" type="file" accept="application/json" style="display:none;" onchange="importNormalizedData(event)">
         </div>
         <div style="font-size:10px;color:var(--tx3);line-height:1.7;">
-          楽曲キャッシュ・タグ投票・高度なタグ投票を JSON で書き出します。<br>
-          アップロードすると現在の楽曲キャッシュとタグ情報を上書きします。
+          楽曲キャッシュ・タグ投票・高度なタグ投票・規約文を JSON で書き出します。<br>
+          アップロードすると現在の楽曲キャッシュ・タグ情報・規約文を上書きします。
         </div>
       </div>
       <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--br);">
@@ -397,6 +397,10 @@ let REMOTE_TAGS={};
 let REMOTE_REPORTS=[];
 let REMOTE_SONGS=[];
 let REMOTE_SONGS_UPDATED_AT='';
+let REMOTE_TOS_HTML='';
+let REMOTE_TOS_UPDATED_AT='';
+let REMOTE_PRIVACY_HTML='';
+let REMOTE_PRIVACY_UPDATED_AT='';
 
 async function apiFetch(path, options={}){
   const res=await fetch(path,{
@@ -409,15 +413,21 @@ async function apiFetch(path, options={}){
   return data;
 }
 async function syncRemoteData(){
-  const [songsApi, bootstrap, reportsRes] = await Promise.all([
+  const [songsApi, bootstrap, reportsRes, tosDoc, privacyDoc] = await Promise.all([
     apiFetch('/api/songs'),
     apiFetch('/api/bootstrap?userId=mod_panel'),
     apiFetch('/api/reports'),
+    apiFetch('/api/legal-doc?key=tos'),
+    apiFetch('/api/legal-doc?key=privacy'),
   ]);
   REMOTE_SONGS=Array.isArray(songsApi?.songs)?songsApi.songs:[];
   REMOTE_SONGS_UPDATED_AT=songsApi?.updatedAt||'';
   REMOTE_TAGS=bootstrap.tags||{};
   REMOTE_REPORTS=reportsRes.reports||[];
+  REMOTE_TOS_HTML=String(tosDoc?.content||'');
+  REMOTE_TOS_UPDATED_AT=String(tosDoc?.updatedAt||'');
+  REMOTE_PRIVACY_HTML=String(privacyDoc?.content||'');
+  REMOTE_PRIVACY_UPDATED_AT=String(privacyDoc?.updatedAt||'');
 }
 
 function renderSongCacheStatus(updatedAt){
@@ -494,6 +504,8 @@ async function importNormalizedData(event){
         songsUpdatedAt:parsed.songsUpdatedAt||parsed.exportedAt||new Date().toISOString(),
         tagVotes:parsed.tagVotes||[],
         advTagVotes:parsed.advTagVotes||[],
+        tosHtml:typeof parsed.tosHtml==='string'?parsed.tosHtml:undefined,
+        privacyHtml:typeof parsed.privacyHtml==='string'?parsed.privacyHtml:undefined,
       },
     });
     await syncRemoteData();
@@ -516,8 +528,8 @@ function getBanned(){ try{return JSON.parse(localStorage.getItem('ic_banned')||'
 function setBanned(b){ localStorage.setItem('ic_banned',JSON.stringify(b)) }
 function getCustomSongs(){ try{return JSON.parse(localStorage.getItem('ic_custom_songs')||'[]')}catch(e){return[]} }
 function setCustomSongs(s){ localStorage.setItem('ic_custom_songs',JSON.stringify(s)) }
-function getTos(){ return localStorage.getItem('ic_tos')||'# 利用規約\n\nここに記入してください。' }
-function getPrivacy(){ return localStorage.getItem('ic_privacy')||'# プライバシーポリシー\n\nここに記入してください。' }
+function getTos(){ return REMOTE_TOS_HTML||localStorage.getItem('ic_tos')||'# 利用規約\n\nここに記入してください。' }
+function getPrivacy(){ return REMOTE_PRIVACY_HTML||localStorage.getItem('ic_privacy')||'# プライバシーポリシー\n\nここに記入してください。' }
 function getApiKey(){ return localStorage.getItem('ic_apikey')||'' }
 function getAdminToken(){ return localStorage.getItem(ADMIN_TOKEN_KEY)||'' }
 
@@ -544,14 +556,14 @@ function renderPanel(id){
     case'users':     renderUsers(); break;
     case'tos': {
       document.getElementById('tosEditor').value=getTos();
-      const u=localStorage.getItem('ic_tos_updated');
+      const u=REMOTE_TOS_UPDATED_AT||localStorage.getItem('ic_tos_updated');
       const lbl=document.getElementById('tosUpdatedLbl');
       if(lbl)lbl.textContent=u?'最終更新: '+u:'';
       break;
     }
     case'privacy': {
       document.getElementById('privacyEditor').value=getPrivacy();
-      const u=localStorage.getItem('ic_privacy_updated');
+      const u=REMOTE_PRIVACY_UPDATED_AT||localStorage.getItem('ic_privacy_updated');
       const lbl=document.getElementById('privUpdatedLbl');
       if(lbl)lbl.textContent=u?'最終更新: '+u:'';
       break;
@@ -1206,8 +1218,42 @@ function unbanUser(id){
 // ══════════════════════════════
 //  SETTINGS
 // ══════════════════════════════
-function saveTos(){localStorage.setItem('ic_tos',document.getElementById('tosEditor').value);showToast('利用規約を保存しました');}
-function savePrivacy(){localStorage.setItem('ic_privacy',document.getElementById('privacyEditor').value);showToast('プライバシーポリシーを保存しました');}
+async function saveLegalDoc(kind, content){
+  const token=getAdminToken();
+  if(!token){showToast('先に年表更新トークンを設定してください');return null;}
+  return apiFetch('/api/legal-doc',{
+    method:'POST',
+    body:{token,key:kind,content},
+  });
+}
+async function saveTos(){
+  const content=document.getElementById('tosEditor').value;
+  try{
+    const data=await saveLegalDoc('tos',content);
+    if(!data)return;
+    REMOTE_TOS_HTML=content;
+    REMOTE_TOS_UPDATED_AT=data.updatedAt||new Date().toISOString();
+    localStorage.setItem('ic_tos',content);
+    localStorage.setItem('ic_tos_updated',REMOTE_TOS_UPDATED_AT);
+    const lbl=document.getElementById('tosUpdatedLbl');
+    if(lbl)lbl.textContent='最終更新: '+REMOTE_TOS_UPDATED_AT;
+    showToast('利用規約を保存しました');
+  }catch(e){showToast('利用規約の保存に失敗しました');}
+}
+async function savePrivacy(){
+  const content=document.getElementById('privacyEditor').value;
+  try{
+    const data=await saveLegalDoc('privacy',content);
+    if(!data)return;
+    REMOTE_PRIVACY_HTML=content;
+    REMOTE_PRIVACY_UPDATED_AT=data.updatedAt||new Date().toISOString();
+    localStorage.setItem('ic_privacy',content);
+    localStorage.setItem('ic_privacy_updated',REMOTE_PRIVACY_UPDATED_AT);
+    const lbl=document.getElementById('privUpdatedLbl');
+    if(lbl)lbl.textContent='最終更新: '+REMOTE_PRIVACY_UPDATED_AT;
+    showToast('プライバシーポリシーを保存しました');
+  }catch(e){showToast('プライバシーポリシーの保存に失敗しました');}
+}
 function saveSettings(){
   const key=document.getElementById('apiKeyField').value.trim();
   const pw=document.getElementById('newPwField').value.trim();
