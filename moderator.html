@@ -396,6 +396,7 @@ if(sessionStorage.getItem(SESSION_KEY)==='1'){
 let REMOTE_TAGS={};
 let REMOTE_REPORTS=[];
 let REMOTE_SONGS=[];
+let REMOTE_SONGS_UPDATED_AT='';
 
 async function apiFetch(path, options={}){
   const res=await fetch(path,{
@@ -414,6 +415,7 @@ async function syncRemoteData(){
     apiFetch('/api/reports'),
   ]);
   REMOTE_SONGS=Array.isArray(songsApi?.songs)?songsApi.songs:[];
+  REMOTE_SONGS_UPDATED_AT=songsApi?.updatedAt||'';
   REMOTE_TAGS=bootstrap.tags||{};
   REMOTE_REPORTS=reportsRes.reports||[];
 }
@@ -421,8 +423,31 @@ async function syncRemoteData(){
 function renderSongCacheStatus(updatedAt){
   const el=document.getElementById('songCacheStatus');
   if(!el)return;
-  const ts=updatedAt||'';
+  const ts=updatedAt||REMOTE_SONGS_UPDATED_AT||'';
   el.textContent=ts?`最終更新: ${new Date(ts).toLocaleString('ja-JP')}`:'最終更新: 未取得';
+}
+
+async function refreshSongsCache(){
+  const token=getAdminToken();
+  if(!token){showToast('先に年表更新トークンを設定してください');return;}
+  const btn=document.querySelector('button[onclick="refreshSongsCache()"]');
+  const prev=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='更新中...';}
+  try{
+    const data=await apiFetch('/api/admin/refresh-songs',{
+      method:'POST',
+      body:{token},
+    });
+    REMOTE_SONGS_UPDATED_AT=data.updatedAt||new Date().toISOString();
+    await syncRemoteData();
+    renderSongCacheStatus(REMOTE_SONGS_UPDATED_AT);
+    renderPanel(document.querySelector('.sb-item.active')?.dataset.panel||'dashboard');
+    showToast(`年表を更新しました（${data.count}曲）`);
+  }catch(e){
+    showToast('年表更新に失敗しました');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=prev||'年表を更新';}
+  }
 }
 
 async function exportNormalizedData(){
