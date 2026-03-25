@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imitate Collection — モデレーター</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f0f;--bg2:#181818;--s1:#212121;--s2:#2a2a2a;--s3:#333;
+  --br:#3d3d3d;--br2:#505050;
+  --ac:#1a6ee8;--ac2:#4d94ff;
+  --tx:#f1f1f1;--tx2:#aaa;--tx3:#777;
+}
+*,::before,::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans JP',sans-serif;font-weight:400;min-height:100vh;display:flex;flex-direction:column;}
+a{color:inherit;text-decoration:none;}
+button{cursor:pointer;font-family:inherit;border:none;}
+
+/* ── LOCK SCREEN ── */
+#lockScreen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;}
+.lock-box{background:var(--bg2);border:1px solid var(--br);border-radius:12px;padding:32px 28px;width:100%;max-width:340px;text-align:center;}
+.lock-logo{font-size:28px;font-weight:700;margin-bottom:6px;}
+.lock-sub{font-size:12px;color:var(--tx3);margin-bottom:24px;font-family:'Space Mono',monospace;}
+.lock-input{width:100%;background:var(--s1);border:1px solid var(--br);color:var(--tx);padding:10px 12px;font-size:14px;border-radius:7px;outline:none;margin-bottom:12px;text-align:center;letter-spacing:.2em;font-family:'Space Mono',monospace;}
+.lock-btn{width:100%;background:var(--ac);color:#fff;padding:10px;border-radius:7px;font-size:14px;font-weight:600;transition:background .2s;}
+.lock-btn:hover{background:var(--ac2);}
+.lock-err{font-size:11px;color:#f87171;margin-top:8px;min-height:16px;}
+
+/* ── LAYOUT ── */
+#app{display:none;flex:1;min-height:100vh;}
+.topbar{position:fixed;top:0;left:0;right:0;height:52px;background:rgba(15,15,15,.97);border-bottom:1px solid var(--br);backdrop-filter:blur(12px);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:100;}
+.tb-logo{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--tx);}
+.tb-logo-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;}
+.tb-logo-name{font-size:13px;font-weight:700;line-height:1.1;}
+.tb-logo-sub{font-size:8px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.12em;}
+.tb-user-chip{display:flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--br);border-radius:16px;padding:4px 12px 4px 4px;font-size:11px;color:var(--tx2);}
+.tb-user-icon{width:22px;height:22px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;}
+
+.tb-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.tb-btn{background:var(--s1);border:1px solid var(--br);color:var(--tx2);padding:5px 12px;border-radius:6px;font-size:12px;transition:all .18s;}
+.tb-btn:hover{background:var(--s2);color:var(--tx);}
+.tb-btn.danger{border-color:rgba(248,113,113,.4);color:#f87171;}
+
+.sidebar{position:fixed;top:52px;left:0;bottom:0;width:220px;background:var(--bg2);border-right:1px solid var(--br);overflow-y:auto;padding:12px 8px;}
+.sb-section{font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.14em;padding:10px 8px 4px;text-transform:uppercase;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;font-size:13px;color:var(--tx2);cursor:pointer;transition:all .18s;margin-bottom:1px;}
+.sb-item:hover{background:var(--s1);color:var(--tx);}
+.sb-item.active{background:rgba(26,110,232,.15);color:var(--ac2);}
+.sb-ic{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+
+.content{margin-top:52px;margin-left:220px;padding:24px;min-height:calc(100vh - 52px);}
+
+/* ── PANELS ── */
+.panel{display:none;}
+.panel.active{display:block;}
+.panel-title{font-size:18px;font-weight:700;margin-bottom:4px;}
+.panel-sub{font-size:12px;color:var(--tx3);margin-bottom:20px;}
+
+/* ── STATS GRID ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
+.dash-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
+.dash-row.full{grid-column:1/-1;}
+@media(max-width:700px){.dash-row{grid-template-columns:repeat(2,1fr);}}
+.chart-wrap{background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:14px;margin-bottom:10px;}
+.chart-title{font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:10px;}
+.chart-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.chart-bar-label{font-size:9px;color:var(--tx3);width:36px;text-align:right;flex-shrink:0;font-family:'Space Mono',monospace;}
+.chart-bar-outer{flex:1;height:10px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+.chart-bar-inner{height:100%;border-radius:3px;background:var(--ac);transition:width .3s;}
+.chart-bar-val{font-size:9px;color:var(--tx3);width:28px;text-align:right;font-family:'Space Mono',monospace;}
+.stat-card{background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:16px;}
+.stat-num{font-size:28px;font-weight:700;color:var(--ac2);font-family:'Space Mono',monospace;}
+.stat-label{font-size:11px;color:var(--tx3);margin-top:2px;}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--bg2);border:1px solid var(--br);border-radius:10px;overflow:hidden;}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{background:var(--s1);padding:10px 12px;font-size:11px;font-weight:600;color:var(--tx3);text-align:left;font-family:'Space Mono',monospace;letter-spacing:.08em;border-bottom:1px solid var(--br);}
+.tbl td{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--br);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--s1);}
+.tbl-thumb{width:60px;aspect-ratio:16/9;object-fit:cover;border-radius:4px;}
+.badge{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;font-family:'Space Mono',monospace;}
+.badge.green{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#22c55e;}
+.badge.red{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);color:#f87171;}
+.badge.yellow{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:#fbbf24;}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:14px;}
+.form-label{font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px;display:block;}
+.form-input{background:var(--s1);border:1px solid var(--br);color:var(--tx);padding:8px 10px;font-size:13px;border-radius:7px;outline:none;transition:border-color .18s;font-family:'Noto Sans JP',sans-serif;}
+.form-input:focus{border-color:var(--ac);}
+.form-textarea{resize:vertical;min-height:100px;width:100%;}
+.btn{padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;transition:all .18s;cursor:pointer;border:1px solid transparent;}
+.btn-pri{background:var(--ac);color:#fff;}
+.btn-pri:hover{background:var(--ac2);}
+.btn-sec{background:var(--s1);border-color:var(--br);color:var(--tx2);}
+.btn-sec:hover{background:var(--s2);color:var(--tx);}
+.btn-danger{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.3);color:#f87171;}
+.btn-danger:hover{background:rgba(248,113,113,.2);}
+
+/* ── REPORT ITEM ── */
+.report-item{background:var(--bg2);border:1px solid var(--br);border-radius:8px;padding:14px;margin-bottom:10px;}
+.report-item-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.report-vid-thumb{width:80px;aspect-ratio:16/9;object-fit:cover;border-radius:4px;flex-shrink:0;}
+.report-meta{font-size:11px;color:var(--tx3);margin-top:4px;}
+
+/* ── USER ITEM ── */
+.user-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--br);}
+.user-item:last-child{border-bottom:none;}
+.user-avatar{width:30px;height:30px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0;}
+
+/* ── TABS ── */
+.tab-row{display:flex;gap:0;border-bottom:1px solid var(--br);margin-bottom:18px;}
+.tab-item{padding:8px 16px;font-size:12px;color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;}
+.tab-item:hover{color:var(--tx);}
+.tab-item.active{color:var(--ac2);border-bottom-color:var(--ac);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--s2);border:1px solid var(--br2);color:var(--tx);padding:8px 16px;border-radius:7px;font-size:12px;z-index:600;opacity:0;transition:all .25s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.6);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media(max-width:768px){
+  .sidebar{width:60px;}
+  .sb-section,.sb-item span{display:none;}
+  .sb-item{justify-content:center;padding:10px;}
+  .content{margin-left:60px;padding:14px;}
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOCK SCREEN ── -->
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-logo">⚙ Mod Panel</div>
+    <div class="lock-sub">Imitate Collection</div>
+    <input class="lock-input" type="password" id="lockInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryUnlock()">
+    <button class="lock-btn" onclick="tryUnlock()">アクセスする</button>
+    <div class="lock-err" id="lockErr"></div>
+    <div style="font-size:10px;color:var(--tx3);margin-top:14px;">Discord認証は準備中。現在はパスワードで管理。</div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <a class="tb-logo" href="index.html">
+      <div class="tb-logo-icon"><img src="icon_2023.png" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" alt=""></div>
+      <div><div class="tb-logo-name">Imitate Collection</div><div class="tb-logo-sub">MODERATOR</div></div>
+    </a>
+    <div class="tb-right">
+      <a href="index.html" class="tb-btn">← メインページに戻る</a>
+      <div class="tb-user-chip" id="modUserChip">
+        <div class="tb-user-icon" id="modUserIcon">?</div>
+        <span id="modUserId">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-section">概要</div>
+    <div class="sb-item active" data-panel="dashboard" onclick="showPanel('dashboard')">
+      <span class="sb-ic">📊</span><span>ダッシュボード</span>
+    </div>
+    <div class="sb-item" data-panel="reports" onclick="showPanel('reports')">
+      <span class="sb-ic">⚠️</span><span>報告一覧</span>
+    </div>
+
+    <div class="sb-section">楽曲</div>
+    <div class="sb-item" data-panel="songs" onclick="showPanel('songs')">
+      <span class="sb-ic">🎵</span><span>楽曲管理</span>
+    </div>
+    <div class="sb-item" data-panel="tags" onclick="showPanel('tags')">
+      <span class="sb-ic">🏷</span><span>タグ管理</span>
+    </div>
+    <div class="sb-section">ユーザー</div>
+    <div class="sb-item" data-panel="users" onclick="showPanel('users')">
+      <span class="sb-ic">👥</span><span>ユーザー管理</span>
+    </div>
+
+    <div class="sb-section">設定</div>
+    <div class="sb-item" data-panel="tos" onclick="showPanel('tos')">
+      <span class="sb-ic">📄</span><span>利用規約</span>
+    </div>
+    <div class="sb-item" data-panel="privacy" onclick="showPanel('privacy')">
+      <span class="sb-ic">🔒</span><span>プライバシーポリシー</span>
+    </div>
+    <div class="sb-item" data-panel="settings" onclick="showPanel('settings')">
+      <span class="sb-ic">⚙</span><span>システム設定</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="panel-title">ダッシュボード</div>
+      <div class="panel-sub">Imitate Collection の概要</div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;" id="dashBottom"></div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="panel" id="panel-reports">
+      <div class="panel-title">報告一覧</div>
+      <div class="panel-sub">ユーザーからの報告を確認・処理します</div>
+      <div id="reportsList"></div>
+    </div>
+
+    <!-- SONGS -->
+    <div class="panel" id="panel-songs">
+      <div class="panel-title">楽曲管理</div>
+      <div class="panel-sub">楽曲の非表示・削除・追加を行います</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <input id="songSearchInput" class="form-input" style="width:280px;" placeholder="曲名・VideoIDで検索..." oninput="renderSongTable()">
+        <select id="songFilterSel" class="form-input" style="width:140px;" onchange="renderSongTable()">
+          <option value="all">すべて</option>
+          <option value="visible">表示中</option>
+          <option value="hidden">非表示</option>
+          <option value="tagged">タグあり</option>
+          <option value="untagged">タグなし</option>
+        </select>
+      </div>
+      <div class="tbl-wrap"><table class="tbl" id="songTable">
+        <thead><tr><th></th><th>タイトル / VideoID</th><th>投稿者</th><th>カテゴリ</th><th>タグ</th><th>状態</th><th>操作</th></tr></thead>
+        <tbody id="songTableBody"></tbody>
+      </table></div>
+    </div>
+
+    <!-- TAGS -->
+    <div class="panel" id="panel-tags">
+      <div class="panel-title">タグ管理</div>
+      <div class="panel-sub">タグ保存済み楽曲のタグデータを閲覧・編集・削除します</div>
+      <div class="tab-row">
+        <div class="tab-item active" onclick="showTagTab('tagged_list')">タグ済み楽曲一覧</div>
+        <div class="tab-item" onclick="showTagTab('tag_editor')">タグ編集</div>
+        <div class="tab-item" onclick="showTagTab('adv_cfg')">高度なタグ設定</div>
+      </div>
+      <div id="tagTabContent"></div>
+    </div>
+
+    <!-- ADV TAGS CONFIG -->
+    <div class="panel" id="panel-adv_tags_cfg">
+      <div class="panel-title">高度なタグ設定</div>
+      <div class="panel-sub">高度なタグのグループ・項目を管理します</div>
+      <div id="advTagsCfgContent"></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="panel" id="panel-users">
+      <div class="panel-title">ユーザー管理</div>
+      <div class="panel-sub">匿名ユーザーの活動履歴・利用制限を管理します</div>
+      <div id="usersContent"></div>
+    </div>
+
+    <!-- TOS -->
+    <div class="panel" id="panel-tos">
+      
+      <div class="panel-title">利用規約</div>
+      <div class="panel-sub">利用規約を編集します（HTMLタグ使用可）</div>
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:10px;">
+        <span id="tosUpdatedLbl" style="font-size:11px;color:var(--tx3);"></span>
+        <a href="tos.html" target="_blank" style="font-size:11px;color:var(--ac2);">プレビュー ↗</a>
+      </div>
+      <div class="form-group">
+        <textarea 
+          id="tosEditor"
+          style="
+          width: 150vh;
+          height: 70vh;
+          font-family:'Space Mono',monospace;
+          font-size:12px;
+          ">
+        </textarea>
+      </div>
+      
+      <button class="btn btn-pri" onclick="saveTos()">保存する</button>
+      
+    </div>
+
+    <!-- PRIVACY -->
+    <div class="panel" id="panel-privacy">
+      <div class="panel-title">プライバシーポリシー</div>
+      <div class="panel-sub">プライバシーポリシーを編集します（HTMLタグ使用可）</div>
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:10px;">
+        <span id="privUpdatedLbl" style="font-size:11px;color:var(--tx3);"></span>
+        <a href="privacy.html" target="_blank" style="font-size:11px;color:var(--ac2);">プレビュー ↗</a>
+      </div>
+      <div class="form-group">
+        <textarea 
+          id="privacyEditor"
+          style="
+          width: 150vh;
+          height: 70vh;
+          font-family:'Space Mono',monospace;
+          font-size:12px;
+          ">
+        </textarea>
+      </div>
+      <button class="btn btn-pri" onclick="savePrivacy()">保存する</button>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="panel-settings">
+      <div class="panel-title">システム設定</div>
+      <div class="panel-sub">各種設定を管理します</div>
+      <div class="form-group">
+        <label class="form-label">YouTube Data API v3 キー</label>
+        <input class="form-input" id="apiKeyField" type="password" placeholder="AIza..." style="width:100%;max-width:400px;">
+        <div style="font-size:10px;color:var(--tx3);margin-top:4px;">設定するとタイトル・再生数が自動取得されます</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">モデレーターパスワード変更</label>
+        <input class="form-input" id="newPwField" type="password" placeholder="新しいパスワード" style="width:100%;max-width:300px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">年表更新トークン</label>
+        <input class="form-input" id="adminTokenField" type="password" placeholder="Cloudflare の ADMIN_TOKEN" style="width:100%;max-width:400px;">
+        <div style="font-size:10px;color:var(--tx3);margin-top:4px;">年表キャッシュを手動更新するときだけ使います</div>
+      </div>
+      <button class="btn btn-pri" onclick="saveSettings()">設定を保存する</button>
+      <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--br);max-width:520px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:12px;color:var(--tx2);">界隈年表キャッシュ</div>
+            <div id="songCacheStatus" style="font-size:11px;color:var(--tx3);margin-top:4px;">状態取得前</div>
+          </div>
+          <button class="btn btn-sec" onclick="refreshSongsCache()">年表を更新</button>
+        </div>
+        <div style="font-size:10px;color:var(--tx3);">ボタンを押すと、Googleスプレッドシートから最新の年表を再取得して D1 に保存します。</div>
+      </div>
+      <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--br);max-width:520px;">
+        <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;">楽曲・タグ バックアップ</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="btn btn-sec" onclick="exportNormalizedData()">ダウンロード</button>
+          <button class="btn btn-sec" onclick="document.getElementById('backupImportFile').click()">アップロード</button>
+          <input id="backupImportFile" type="file" accept="application/json" style="display:none;" onchange="importNormalizedData(event)">
+        </div>
+        <div style="font-size:10px;color:var(--tx3);line-height:1.7;">
+          楽曲キャッシュ・タグ投票・高度なタグ投票を JSON で書き出します。<br>
+          アップロードすると現在の楽曲キャッシュとタグ情報を上書きします。
+        </div>
+      </div>
+      <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--br);">
+        <div style="font-size:12px;color:var(--tx3);margin-bottom:8px;">危険な操作</div>
+        <button class="btn btn-danger" onclick="if(confirm('全タグデータを削除しますか？'))clearAllTags()">全タグデータを削除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════
+//  AUTH
+// ══════════════════════════════
+const MOD_PW_KEY = 'ic_mod_pw';
+const SESSION_KEY = 'ic_mod_session';
+const ADMIN_TOKEN_KEY = 'ic_admin_token';
+const DEFAULT_PW = 'imitate_sbt132_imicom';
+
+function getStoredPw(){ return localStorage.getItem(MOD_PW_KEY) || DEFAULT_PW; }
+
+function tryUnlock(){
+  const v = document.getElementById('lockInput').value;
+  if(v === getStoredPw()){
+    sessionStorage.setItem(SESSION_KEY,'1');
+    document.getElementById('lockScreen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    init();
+  } else {
+    document.getElementById('lockErr').textContent='パスワードが違います';
+    document.getElementById('lockInput').value='';
+  }
+}
+function logout(){
+  sessionStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+// 自動ログイン（セッション継続）
+if(sessionStorage.getItem(SESSION_KEY)==='1'){
+  document.getElementById('lockScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+}
+
+// ══════════════════════════════
+//  DATA HELPERS
+// ══════════════════════════════
+let REMOTE_TAGS={};
+let REMOTE_REPORTS=[];
+let REMOTE_SONGS=[];
+
+async function apiFetch(path, options={}){
+  const res=await fetch(path,{
+    method:options.method||'GET',
+    headers:{'Content-Type':'application/json',...(options.headers||{})},
+    body:options.body?JSON.stringify(options.body):undefined,
+  });
+  const data=await res.json().catch(()=>({ok:false,error:'invalid json'}));
+  if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
+  return data;
+}
+async function syncRemoteData(){
+  const [songsApi, bootstrap, reportsRes] = await Promise.all([
+    apiFetch('/api/songs'),
+    apiFetch('/api/bootstrap?userId=mod_panel'),
+    apiFetch('/api/reports'),
+  ]);
+  REMOTE_SONGS=Array.isArray(songsApi?.songs)?songsApi.songs:[];
+  REMOTE_TAGS=bootstrap.tags||{};
+  REMOTE_REPORTS=reportsRes.reports||[];
+}
+
+function renderSongCacheStatus(updatedAt){
+  const el=document.getElementById('songCacheStatus');
+  if(!el)return;
+  const ts=updatedAt||'';
+  el.textContent=ts?`最終更新: ${new Date(ts).toLocaleString('ja-JP')}`:'最終更新: 未取得';
+}
+
+async function exportNormalizedData(){
+  const token=getAdminToken();
+  if(!token){showToast('先に年表更新トークンを設定してください');return;}
+  let data;
+  try{
+    const res=await fetch('/api/admin/export-data',{headers:{'x-admin-token':token}});
+    data=await res.json();
+    if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
+  }catch(e){showToast('ダウンロードに失敗しました');return;}
+
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`imitate_collection_backup_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('バックアップをダウンロードしました');
+}
+
+async function importNormalizedData(event){
+  const file=event.target.files?.[0];
+  event.target.value='';
+  if(!file)return;
+  const token=getAdminToken();
+  if(!token){showToast('先に年表更新トークンを設定してください');return;}
+  if(!confirm('現在の楽曲キャッシュとタグ情報を、選択したJSONで上書きします。続行しますか？'))return;
+
+  let parsed;
+  try{
+    parsed=JSON.parse(await file.text());
+  }catch(e){showToast('JSONの読み込みに失敗しました');return;}
+
+  try{
+    const data=await apiFetch('/api/admin/import-data',{
+      method:'POST',
+      body:{
+        token,
+        songs:parsed.songs||[],
+        songsUpdatedAt:parsed.songsUpdatedAt||parsed.exportedAt||new Date().toISOString(),
+        tagVotes:parsed.tagVotes||[],
+        advTagVotes:parsed.advTagVotes||[],
+      },
+    });
+    await syncRemoteData();
+    renderSongCacheStatus(parsed.songsUpdatedAt||parsed.exportedAt||new Date().toISOString());
+    renderPanel(document.querySelector('.sb-item.active')?.dataset.panel||'dashboard');
+    showToast(`取込完了: ${data.songs}曲 / ${data.tagVotes}タグ票`);
+  }catch(e){
+    showToast('アップロードに失敗しました');
+  }
+}
+
+function getTags(){ return REMOTE_TAGS; }
+function setTags(t){ REMOTE_TAGS=t; }
+function getReports(){ return REMOTE_REPORTS; }
+function setReports(r){ REMOTE_REPORTS=r; }
+function getCache(){ return REMOTE_SONGS; }
+function getHidden(){ try{return JSON.parse(localStorage.getItem('ic_hidden')||'[]')}catch(e){return[]} }
+function setHidden(h){ localStorage.setItem('ic_hidden',JSON.stringify(h)) }
+function getBanned(){ try{return JSON.parse(localStorage.getItem('ic_banned')||'[]')}catch(e){return[]} }
+function setBanned(b){ localStorage.setItem('ic_banned',JSON.stringify(b)) }
+function getCustomSongs(){ try{return JSON.parse(localStorage.getItem('ic_custom_songs')||'[]')}catch(e){return[]} }
+function setCustomSongs(s){ localStorage.setItem('ic_custom_songs',JSON.stringify(s)) }
+function getTos(){ return localStorage.getItem('ic_tos')||'# 利用規約\n\nここに記入してください。' }
+function getPrivacy(){ return localStorage.getItem('ic_privacy')||'# プライバシーポリシー\n\nここに記入してください。' }
+function getApiKey(){ return localStorage.getItem('ic_apikey')||'' }
+function getAdminToken(){ return localStorage.getItem(ADMIN_TOKEN_KEY)||'' }
+
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ══════════════════════════════
+//  PANELS
+// ══════════════════════════════
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.querySelector(`[data-panel="${id}"]`).classList.add('active');
+  renderPanel(id);
+}
+
+function renderPanel(id){
+  switch(id){
+    case'dashboard': renderDashboard(); break;
+    case'reports':   renderReports(); break;
+    case'songs':     renderSongTable(); break;
+    case'tags':      renderTagPanel(); break;
+    case'adv_tags_cfg': renderAdvTagsCfg(); break;
+    case'users':     renderUsers(); break;
+    case'tos': {
+      document.getElementById('tosEditor').value=getTos();
+      const u=localStorage.getItem('ic_tos_updated');
+      const lbl=document.getElementById('tosUpdatedLbl');
+      if(lbl)lbl.textContent=u?'最終更新: '+u:'';
+      break;
+    }
+    case'privacy': {
+      document.getElementById('privacyEditor').value=getPrivacy();
+      const u=localStorage.getItem('ic_privacy_updated');
+      const lbl=document.getElementById('privUpdatedLbl');
+      if(lbl)lbl.textContent=u?'最終更新: '+u:'';
+      break;
+    }
+    case'settings':
+      document.getElementById('apiKeyField').value=getApiKey();
+      document.getElementById('adminTokenField').value=getAdminToken();
+      renderSongCacheStatus();
+      break;
+  }
+}
+
+
+// ══════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════
+function getAccessData(){
+  try{return JSON.parse(localStorage.getItem('ic_access')||'{"total":0,"monthly":{},"uid_total":{},"uid_monthly":{},"daily":{}}');}catch(e){return{total:0,monthly:{},uid_total:{},uid_monthly:{},daily:{}};}
+}
+function getClickData(){
+  try{return JSON.parse(localStorage.getItem('ic_clicks')||'{}');}catch(e){return{};}
+}
+function getDailyStat(type){
+  try{return JSON.parse(localStorage.getItem('ic_daily_'+type)||'{}');}catch(e){return{};}
+}
+function getUidDaily(){
+  try{return JSON.parse(localStorage.getItem('ic_uid_daily')||'{}');}catch(e){return{};}
+}
+
+function makeMiniChart(dailyData, color, days=14){
+  const today=new Date();
+  const labels=[];
+  const vals=[];
+  for(let i=days-1;i>=0;i--){
+    const d=new Date(today);
+    d.setDate(d.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+    labels.push(key.slice(5)); // MM-DD
+    vals.push(dailyData[key]||0);
+  }
+  const maxV=Math.max(...vals,1);
+  return `<div class="chart-wrap">
+    <div style="display:flex;align-items:flex-end;gap:2px;height:48px;padding:0 2px;">
+      ${vals.map((v,i)=>`
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="${labels[i]}: ${v}">
+          <div style="flex:1;width:100%;display:flex;align-items:flex-end;">
+            <div style="width:100%;background:${color};border-radius:2px 2px 0 0;height:${Math.round(v/maxV*100)}%;min-height:${v>0?2:0}px;transition:height .3s;opacity:.85;"></div>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:2px;padding:0 2px;margin-top:2px;">
+      ${labels.map((l,i)=>i%Math.ceil(days/5)===0?`<div style="flex:1;font-size:7px;color:var(--tx3);font-family:'Space Mono',monospace;text-align:center;">${l}</div>`:`<div style="flex:1;"></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderDashboard(){
+  const songs=getCache();
+  const tags=getTags();
+  const taggedCount=Object.keys(tags).length;
+  const reports=getReports();
+  const openReports=reports.filter(r=>!r.resolved).length;
+
+  const acc=getAccessData();
+  const clicks=getClickData();
+  const ym=new Date().toISOString().slice(0,7);
+  const mAccess=acc.monthly?.[ym]||0;
+  const mUniq=Object.keys(acc.uid_monthly?.[ym]||{}).length;
+  const mClicks=Object.entries(clicks).reduce((s,[,v])=>typeof v==='number'?s:s,0);
+  // 月間クリック数: ic_daily_clicks から当月分合計
+  const dailyClicks=getDailyStat('clicks');
+  const mClicksCalc=Object.entries(dailyClicks).filter(([k])=>k.startsWith(ym)).reduce((s,[,v])=>s+v,0);
+  const tAccess=acc.total||0;
+  const tUniq=Object.keys(acc.uid_total||{}).length;
+  const tClicks=Object.values(dailyClicks).reduce((a,b)=>a+b,0);
+
+  // 棒グラフ用データ
+  const dailyAccess=acc.daily||{};
+  const uidDaily=getUidDaily();
+  const dailyUniq={};
+  Object.entries(uidDaily).forEach(([day,uids])=>{ dailyUniq[day]=Object.keys(uids).length; });
+
+  document.getElementById('statsGrid').innerHTML=`
+    <!-- 登録動画数（全幅） -->
+    <div style="background:var(--bg2);border:1px solid rgba(26,110,232,.4);border-radius:10px;padding:16px;margin-bottom:10px;text-align:center;">
+      <div style="font-size:40px;font-weight:700;color:var(--ac2);font-family:'Space Mono',monospace;">${songs.length}</div>
+      <div style="font-size:12px;color:var(--tx3);margin-top:2px;">登録動画数</div>
+    </div>
+    <!-- 3列: タグ統計 -->
+    <div class="dash-row">
+      <div class="stat-card">
+        <div class="stat-num" style="color:#22c55e;">${taggedCount}</div>
+        <div class="stat-label">タグ登録済み楽曲</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:var(--tx3);">${songs.length-taggedCount}</div>
+        <div class="stat-label">タグ未登録楽曲</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:#f87171;">${openReports}</div>
+        <div class="stat-label">未処理の報告</div>
+      </div>
+    </div>
+    <!-- 3列: 月間 -->
+    <div class="dash-row">
+      <div class="stat-card"><div class="stat-num">${mAccess}</div><div class="stat-label">月間アクセス数</div></div>
+      <div class="stat-card"><div class="stat-num">${mUniq}</div><div class="stat-label">月間ユニーク数</div></div>
+      <div class="stat-card"><div class="stat-num">${mClicksCalc}</div><div class="stat-label">月間リンククリック</div></div>
+    </div>
+    <!-- 3列: 累計 -->
+    <div class="dash-row">
+      <div class="stat-card"><div class="stat-num">${tAccess}</div><div class="stat-label">累計アクセス数</div></div>
+      <div class="stat-card"><div class="stat-num">${tUniq}</div><div class="stat-label">累計ユニーク数</div></div>
+      <div class="stat-card"><div class="stat-num">${tClicks}</div><div class="stat-label">累計リンククリック</div></div>
+    </div>
+    <!-- 棒グラフ 3列 -->
+    <div class="dash-row" style="margin-top:4px;">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別アクセス数（14日）</div>
+        ${makeMiniChart(dailyAccess,'#4d94ff')}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別ユニーク数（14日）</div>
+        ${makeMiniChart(dailyUniq,'#4ade80')}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別クリック数（14日）</div>
+        ${makeMiniChart(dailyClicks,'#fbbf24')}
+      </div>
+    </div>
+  `;
+
+  // カテゴリ集計
+  const cats={};
+  songs.forEach(s=>{if(s.category)cats[s.category]=(cats[s.category]||0)+1;});
+  const catRows=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  document.getElementById('dashBottom').innerHTML=`
+    <div class="tbl-wrap" style="margin-top:6px;">
+      <table class="tbl">
+        <thead><tr><th>カテゴリ</th><th>楽曲数</th><th>タグ済み</th></tr></thead>
+        <tbody>${catRows.map(([cat,n])=>{
+          const tc=Object.entries(tags).filter(([vid])=>{const s=songs.find(x=>x.videoId===vid);return s?.category===cat;}).length;
+          return `<tr><td>${escH(cat)}</td><td>${n}</td><td>${tc} (${n?Math.round(tc/n*100):0}%)</td></tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ══════════════════════════════
+//  REPORTS
+// ══════════════════════════════
+function renderReports(){
+  const reports=getReports();
+  const el=document.getElementById('reportsList');
+  if(!reports.length){el.innerHTML='<p style="color:var(--tx3);padding:20px;">報告はまだありません</p>';return;}
+  const typeLabel={not_kaiwai:'界隈曲でない',wrong_tag:'タグが異なる',other:'その他'};
+  el.innerHTML=[...reports].reverse().map((r,ri)=>{
+    const realIdx=reports.length-1-ri;
+    return `<div class="report-item">
+      <div class="report-item-head">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <img class="report-vid-thumb" src="https://img.youtube.com/vi/${escH(r.vid)}/mqdefault.jpg" alt="">
+          <div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:3px;">${escH(r.vid)}</div>
+            <div class="report-meta">報告者: ${escH(r.name)} ${r.contact?`/ ${escH(r.contact)}`:''}</div>
+            <div class="report-meta">種別: <span class="badge ${r.type==='not_kaiwai'?'red':'yellow'}">${typeLabel[r.type]||r.type}</span></div>
+            <div class="report-meta" style="margin-top:5px;">${escH(r.comment)}</div>
+            <div class="report-meta">${new Date(r.ts).toLocaleString('ja-JP')}</div>
+          </div>
+        </div>
+        <span class="badge ${r.resolved?'green':'yellow'}">${r.resolved?'解決済み':'未処理'}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-sec" onclick="window.open('https://www.youtube.com/watch?v=${escH(r.vid)}','_blank')">▶ YouTube</button>
+        <button class="btn btn-sec" onclick="toggleHideVid('${escH(r.vid)}')">非表示切替</button>
+        <button class="btn btn-danger" onclick="deleteTagData('${escH(r.vid)}')">タグ削除</button>
+        ${!r.resolved?`<button class="btn btn-pri" style="margin-left:auto;" onclick="resolveReport(${realIdx})">✓ 解決済みにする</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function resolveReport(idx){
+  const r=getReports();
+  const target=r[idx];
+  if(!target)return;
+  try{
+    await apiFetch('/api/report-resolve',{method:'POST',body:{id:target.id}});
+  }catch(e){showToast('更新に失敗しました');return;}
+  target.resolved=true;
+  setReports(r);
+  renderReports();
+  showToast('解決済みにしました');
+}
+
+// ══════════════════════════════
+//  SONGS TABLE
+// ══════════════════════════════
+function renderSongTable(){
+  const songs=getCache();
+  const tags=getTags();
+  const hidden=getHidden();
+  const q=(document.getElementById('songSearchInput')?.value||'').toLowerCase();
+  const f=document.getElementById('songFilterSel')?.value||'all';
+
+  let filtered=songs.filter(s=>{
+    if(q&&!s.title?.toLowerCase().includes(q)&&!s.videoId.includes(q))return false;
+    if(f==='visible')return!hidden.includes(s.videoId);
+    if(f==='hidden') return hidden.includes(s.videoId);
+    if(f==='tagged') return!!tags[s.videoId];
+    if(f==='untagged') return!tags[s.videoId];
+    return true;
+  }).slice(0,100);
+
+  document.getElementById('songTableBody').innerHTML=filtered.map(s=>
+    `<tr>
+      <td><img class="tbl-thumb" src="https://img.youtube.com/vi/${s.videoId}/mqdefault.jpg" alt=""></td>
+      <td><div style="font-weight:500;font-size:12px;">${escH(s.title||'(不明)')}</div><div style="font-size:10px;color:var(--tx3);font-family:'Space Mono',monospace;">${s.videoId}</div></td>
+      <td style="font-size:11px;">${escH(s.artist||'')}</td>
+      <td><span class="badge yellow">${escH(s.category||'')}</span></td>
+      <td>${tags[s.videoId]?`<span class="badge green">${tags[s.videoId].votes}件</span>`:'<span class="badge" style="opacity:.4;">なし</span>'}</td>
+      <td>${hidden.includes(s.videoId)?'<span class="badge red">非表示</span>':'<span class="badge green">表示中</span>'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-sec" style="font-size:11px;padding:4px 8px;" onclick="toggleHideVid('${s.videoId}')">表示切替</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="deleteTagData('${s.videoId}')">タグ削除</button>
+      </td>
+    </tr>`).join('');
+}
+
+function toggleHideVid(vid){
+  const h=getHidden();
+  const idx=h.indexOf(vid);
+  if(idx>=0)h.splice(idx,1);else h.push(vid);
+  setHidden(h);
+  renderSongTable();
+  showToast(idx>=0?'表示に戻しました':'非表示にしました');
+}
+async function deleteTagData(vid){
+  if(!confirm(`${vid} のタグデータを削除しますか？`))return;
+  try{
+    await apiFetch('/api/tag-delete',{method:'POST',body:{videoId:vid}});
+  }catch(e){showToast('タグ削除に失敗しました');return;}
+  const t=getTags();
+  delete t[vid];
+  setTags(t);
+  renderSongTable();
+  renderTagPanel();
+  showToast('タグデータを削除しました');
+}
+
+// ══════════════════════════════
+//  TAG PANEL
+// ══════════════════════════════
+let tagTab='tagged_list';
+function showTagTab(tab){
+  tagTab=tab;
+  document.querySelectorAll('#panel-tags .tab-item').forEach((t,i)=>{
+    t.classList.toggle('active',['tagged_list','tag_editor','adv_cfg'][i]===tab);
+  });
+  renderTagPanel();
+}
+
+function renderTagPanel(){
+  const el=document.getElementById('tagTabContent');
+  const tags=getTags();
+  const songs=getCache();
+
+  if(tagTab==='tagged_list'){
+    const q=(document.getElementById('tagListQ')||{value:''}).value.toLowerCase();
+    let entries=Object.entries(tags).sort((a,b)=>(b[1].votes||0)-(a[1].votes||0));
+    if(q){entries=entries.filter(([vid,t])=>{
+      const s=songs.find(x=>x.videoId===vid)||{};
+      return vid.toLowerCase().includes(q)||
+        (s.title||'').toLowerCase().includes(q)||
+        (s.artist||'').toLowerCase().includes(q);
+    });}
+    if(!entries.length){el.innerHTML=`<div style="margin-bottom:10px;"><input class="form-input" id="tagListQ" placeholder="VideoID・楽曲名・投稿者で検索..." style="width:300px;" oninput="renderTagPanel()"></div><p style="color:var(--tx3);">タグ保存済み楽曲はありません</p>`;return;}
+    el.innerHTML=`
+      <div style="margin-bottom:10px;">
+        <input class="form-input" id="tagListQ" placeholder="VideoID・楽曲名・投稿者で検索..." style="width:300px;" oninput="renderTagPanel()" value="${escH(q)}">
+      </div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th></th><th>楽曲 / VideoID</th><th>投稿者</th><th>暗さ</th><th>リズム</th><th>メロ</th><th>本家度</th><th>件数</th><th>操作</th></tr></thead>
+        <tbody>${entries.slice(0,100).map(([vid,t])=>{
+          const s=songs.find(x=>x.videoId===vid)||{};
+          return `<tr>
+            <td><img class="tbl-thumb" src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" alt=""></td>
+            <td><div style="font-size:11px;font-weight:500;">${escH(s.title||'(不明)')}</div>
+              <div style="font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;">${vid}</div></td>
+            <td style="font-size:11px;">${escH(s.artist||'')}</td>
+            <td>${t.mood??'-'}</td><td>${t.rhythm??'-'}</td><td>${t.melody??'-'}</td><td>${t.origin??'-'}</td>
+            <td><span class="badge green">${t.votes||0}</span></td>
+            <td style="white-space:nowrap;">
+              <button class="btn btn-sec" style="font-size:11px;padding:4px 8px;" onclick="loadTagById('${vid}');showTagTab('tag_editor')">編集</button>
+              <button class="btn btn-danger" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="deleteTagData('${vid}')">削除</button>
+            </td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table></div>`;
+
+  } else if(tagTab==='tag_editor'){
+    // 左: 雰囲気タグ + 右: 高度なタグ
+    el.innerHTML=`
+      <div style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start;">
+        <div>
+          <div class="form-group">
+            <label class="form-label">VideoID・楽曲名・投稿者で検索</label>
+            <div style="display:flex;gap:6px;">
+              <input class="form-input" id="tagEdSearch" placeholder="VideoID または 楽曲名..." style="flex:1;" oninput="renderTagSearchResults()">
+            </div>
+            <div id="tagEdSearchResults" style="margin-top:6px;max-height:160px;overflow-y:auto;background:var(--s1);border:1px solid var(--br);border-radius:6px;display:none;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">選択中</label>
+            <div id="tagEdSelected" style="font-size:11px;color:var(--tx3);font-family:'Space Mono',monospace;">（未選択）</div>
+          </div>
+          ${['mood','rhythm','melody','origin'].map((k,i)=>{
+            const labels=['暗さ','リズム','メロ','本家度'];const colors=['#818cf8','#fbbf24','#f472b6','#4ade80'];
+            return `<div class="form-group" style="margin-bottom:8px;">
+              <label class="form-label" style="color:${colors[i]}">${labels[i]} (0-20)</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="range" id="tagEdSl_${k}" min="0" max="20" value="10"
+                  style="-webkit-appearance:none;flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.15);cursor:pointer;accent-color:${colors[i]};"
+                  oninput="syncTagEd('${k}','sl')">
+                <input class="form-input" id="tagEd_${k}" type="number" min="0" max="20" value="10" style="width:56px;padding:4px 6px;text-align:center;"
+                  oninput="syncTagEd('${k}','num')">
+              </div>
+            </div>`;
+          }).join('')}
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-pri" onclick="saveTagEdit()">上書き保存</button>
+            <button class="btn btn-danger" onclick="clearTagEdit()">クリア</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--br);">高度なタグ</div>
+          <div id="tagEdAdvArea" style="color:var(--tx3);font-size:12px;">VideoIDを選択すると高度なタグが表示されます</div>
+        </div>
+      </div>`;
+    // 既存選択があればそれを反映
+    if(window._tagEdVid) loadTagById(window._tagEdVid);
+
+  } else if(tagTab==='adv_cfg'){
+    renderAdvCfgTab(el);
+  }
+}
+
+function renderTagSearchResults(){
+  const q=(document.getElementById('tagEdSearch')?.value||'').toLowerCase();
+  const res=document.getElementById('tagEdSearchResults');
+  if(!res)return;
+  if(!q){res.style.display='none';return;}
+  const songs=getCache();
+  const tags=getTags();
+  const hits=songs.filter(s=>
+    s.videoId.toLowerCase().includes(q)||
+    (s.title||'').toLowerCase().includes(q)||
+    (s.artist||'').toLowerCase().includes(q)
+  ).slice(0,8);
+  if(!hits.length){res.style.display='none';return;}
+  res.style.display='block';
+  res.innerHTML=hits.map(s=>`
+    <div style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--br);font-size:12px;transition:background .15s;"
+      onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''"
+      onclick="loadTagById('${escH(s.videoId)}');document.getElementById('tagEdSearch').value='';document.getElementById('tagEdSearchResults').style.display='none';">
+      <div style="font-weight:500;">${escH(s.title||s.videoId)}</div>
+      <div style="font-size:10px;color:var(--tx3);">${escH(s.artist||'')} / ${s.videoId}</div>
+    </div>`).join('');
+}
+
+function syncTagEd(key, from){
+  const sl=document.getElementById('tagEdSl_'+key);
+  const nm=document.getElementById('tagEd_'+key);
+  if(!sl||!nm)return;
+  if(from==='sl')nm.value=sl.value;
+  else sl.value=nm.value;
+}
+
+function loadTagById(vid){
+  window._tagEdVid=vid;
+  const t=getTags()[vid];
+  const songs=getCache();
+  const s=songs.find(x=>x.videoId===vid)||{};
+  const selEl=document.getElementById('tagEdSelected');
+  if(selEl)selEl.innerHTML=`<span style="color:var(--tx)">${escH(s.title||vid)}</span> <span style="color:var(--tx3);">${escH(s.artist||'')}</span>`;
+  if(t){
+    ['mood','rhythm','melody','origin'].forEach(k=>{
+      const sl=document.getElementById('tagEdSl_'+k);
+      const nm=document.getElementById('tagEd_'+k);
+      const v=t[k]??10;
+      if(sl)sl.value=v;
+      if(nm)nm.value=v;
+    });
+  }
+  // 高度なタグ右ペイン
+  renderTagEdAdvPane(vid);
+}
+
+function renderTagEdAdvPane(vid){
+  const area=document.getElementById('tagEdAdvArea');
+  if(!area)return;
+  const t=getTags()[vid];
+  const adv=t?.adv||[];
+  const advVotes=t?.advVotes||{};
+  const ADV_TAG_GROUPS=JSON.parse(localStorage.getItem('ic_adv_tag_groups')||'null')||getDefaultAdvGroups();
+  const all=ADV_TAG_GROUPS.flatMap(g=>g.t);
+  area.innerHTML=ADV_TAG_GROUPS.map(g=>`
+    <div style="margin-bottom:10px;">
+      <div style="font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:5px;">${escH(g.g)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        ${g.t.map(t=>{
+          const sel=adv.includes(t);
+          const v=advVotes[t]||{yes:0,total:0};
+          const rate=v.total>0?Math.round(v.yes/v.total*100):0;
+          return `<button onclick="toggleModAdvTag('${escH(vid)}','${escH(t)}')" style="padding:3px 8px;border-radius:10px;font-size:11px;cursor:pointer;border:1px solid ${sel?'var(--ac2)':'var(--br)'};background:${sel?'rgba(26,110,232,.15)':'var(--s1)'};color:${sel?'var(--ac2)':'var(--tx2)'};transition:all .18s;">${escH(t)}${rate>0?` <span style="font-size:8px;opacity:.6;">${rate}%</span>`:''}</button>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function toggleModAdvTag(vid, tag){
+  const t=getTags();
+  if(!t[vid])t[vid]={mood:10,rhythm:10,melody:10,origin:10,votes:0,adv:[],advVotes:{}};
+  const adv=t[vid].adv||[];
+  const idx=adv.indexOf(tag);
+  if(idx>=0)adv.splice(idx,1);else adv.push(tag);
+  t[vid].adv=adv;
+  setTags(t);
+  renderTagEdAdvPane(vid);
+  showToast('高度なタグを更新しました');
+}
+
+function loadTagForEdit(){loadTagById(document.getElementById('tagEdVid')?.value?.trim()||'');}
+
+async function saveTagEdit(){
+  const vid=window._tagEdVid;
+  if(!vid){showToast('VideoIDを選択してください');return;}
+  const body={userId:'mod_panel',videoId:vid};
+  ['mood','rhythm','melody','origin'].forEach(k=>{
+    const el=document.getElementById('tagEd_'+k);
+    if(el)body[k]=parseInt(el.value)||10;
+  });
+  try{
+    const res=await apiFetch('/api/tag',{method:'POST',body});
+    REMOTE_TAGS[vid]=res.tag;
+  }catch(e){showToast('保存に失敗しました');return;}
+  showToast('保存しました');
+}
+function clearTagEdit(){
+  window._tagEdVid=null;
+  ['mood','rhythm','melody','origin'].forEach(k=>{
+    const sl=document.getElementById('tagEdSl_'+k);
+    const nm=document.getElementById('tagEd_'+k);
+    if(sl)sl.value=10;if(nm)nm.value=10;
+  });
+  const selEl=document.getElementById('tagEdSelected');
+  if(selEl)selEl.textContent='（未選択）';
+  const area=document.getElementById('tagEdAdvArea');
+  if(area)area.textContent='VideoIDを選択すると高度なタグが表示されます';
+}
+
+// ══════════════════════════════
+//  ADV TAGS CONFIG
+// ══════════════════════════════
+function getDefaultAdvGroups(){
+  return [
+    {g:'ボーカル', t:['デフォ子（唄音ウタ）','重音テト','初音ミク','UTAU','ボカロ','インスト','その他']},
+    {g:'模倣枠',  t:['.模倣','..模倣','教育模倣','アブジェ模倣','...模倣','表/裏模倣','名の無い星模倣','エヌ模倣','K²模倣','オリジナル模倣','三次模倣','short枠','FULL枠']},
+    {g:'使用楽器', t:['ピアノ','ギター','アコースティック','ベース','シンセ','三味線','エレピ','ドラム','パーカッション']},
+    {g:'雰囲気',  t:['ポジティブ','ネガティブ','中毒性','キャッチー','実験的','ノスタルジー','悲しい','和風','人間味がある','ノイジー','レトロ','メロディアス','リズミカル','ミニマル','面白い','怖い','盛り上がる']},
+    {g:'ジャンル', t:['ポップス','EDM','ジャズ','ロック','ヒップホップ','シティポップ','クラシック','ボサノバ','ラテン','アンビエント']},
+    {g:'長さ',    t:['ショート尺(~2分)','ミディアム尺(2~5分)','ロング尺(5分~)']},
+    {g:'その他',  t:['ループ曲','コラボ','自作音源','楽譜','ロゴあり','イラスト','ドット絵','教育文字','モーショングラフィックス','文字PV','DAW画面','モールス','二進数','鍵盤','波紋','点字','格子','リトマス','ヒラギノ/源ノ角フォント','k8x12Sフォント','美咲フォント','ネタ','予告','解読','英語','中国語','イミラスライル語','すべあな編曲']},
+  ];
+}
+
+function getAdvGroups(){
+  const saved=localStorage.getItem('ic_adv_tag_groups');
+  return saved?JSON.parse(saved):getDefaultAdvGroups();
+}
+function saveAdvGroups(groups){localStorage.setItem('ic_adv_tag_groups',JSON.stringify(groups));}
+
+function renderAdvCfgTab(el){
+  const groups=getAdvGroups();
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px;">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--br);">タグを追加</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+          <select class="form-input" id="newAdvGroup" style="width:160px;">
+            ${groups.map(g=>`<option value="${escH(g.g)}">${escH(g.g)}</option>`).join('')}
+            <option value="__new">＋ 新しいグループ</option>
+          </select>
+          <input class="form-input" id="newAdvGroupName" placeholder="新グループ名..." style="display:none;width:160px;">
+          <input class="form-input" id="newAdvTag" placeholder="タグ名" style="flex:1;min-width:100px;">
+          <button class="btn btn-pri" onclick="addAdvTag()">追加</button>
+        </div>
+        <script>
+          document.getElementById('newAdvGroup').onchange=function(){
+            document.getElementById('newAdvGroupName').style.display=this.value==='__new'?'':'none';
+          };
+        <\/script>
+      </div>
+      <div style="text-align:right;">
+        <button class="btn btn-sec" onclick="resetAdvGroups()" style="font-size:11px;">デフォルトに戻す</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      ${groups.map(g=>`
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:600;color:var(--tx2);">${escH(g.g)}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            ${g.t.map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;background:var(--s1);border:1px solid var(--br);border-radius:10px;font-size:11px;color:var(--tx2);">
+              ${escH(t)}
+              <button onclick="removeAdvTag('${escH(g.g)}','${escH(t)}')" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:12px;line-height:1;padding:0;margin-left:2px;" title="削除">✕</button>
+            </span>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function addAdvTag(){
+  const selEl=document.getElementById('newAdvGroup');
+  let groupName=selEl?.value;
+  if(groupName==='__new')groupName=document.getElementById('newAdvGroupName')?.value?.trim();
+  const tag=document.getElementById('newAdvTag')?.value?.trim();
+  if(!groupName||!tag){showToast('グループとタグ名を入力してください');return;}
+  const groups=getAdvGroups();
+  let g=groups.find(x=>x.g===groupName);
+  if(!g){g={g:groupName,t:[]};groups.push(g);}
+  if(g.t.includes(tag)){showToast('すでに存在するタグです');return;}
+  g.t.push(tag);
+  saveAdvGroups(groups);
+  showToast(`「${groupName} / ${tag}」を追加しました`);
+  renderTagPanel();
+}
+function removeAdvTag(group,tag){
+  if(!confirm(`「${group} / ${tag}」を削除しますか？`))return;
+  const groups=getAdvGroups();
+  const g=groups.find(x=>x.g===group);
+  if(g){const i=g.t.indexOf(tag);if(i>=0)g.t.splice(i,1);}
+  saveAdvGroups(groups);
+  renderTagPanel();
+  showToast(`「${tag}」を削除しました`);
+}
+function resetAdvGroups(){
+  if(!confirm('デフォルトのタグ設定に戻しますか？'))return;
+  localStorage.removeItem('ic_adv_tag_groups');
+  renderTagPanel();
+  showToast('デフォルトに戻しました');
+}
+
+// ══════════════════════════════
+//  ADV TAGS CONFIG
+// ══════════════════════════════
+function renderAdvTagsCfg(){
+  const el=document.getElementById('advTagsCfgContent');
+  el.innerHTML=`<div style="max-width:600px;">
+    <p style="font-size:12px;color:var(--tx3);margin-bottom:14px;">高度なタグのグループ・項目を管理します。現在の設定はメイン画面のJSに直接記述されています。将来的にここから動的に変更できるようになる予定です。</p>
+    <div style="background:var(--bg2);border:1px solid var(--br);border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;margin-bottom:8px;">新規タグを追加</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select class="form-input" id="newTagGroup" style="width:160px;">
+          <option>ボーカル</option><option>模倣枠</option><option>使用楽器</option>
+          <option>雰囲気</option><option>ジャンル</option><option>長さ</option><option>その他</option>
+        </select>
+        <input class="form-input" id="newTagName" placeholder="タグ名" style="flex:1;">
+        <button class="btn btn-pri" onclick="addNewTag()">追加</button>
+      </div>
+    </div>
+    <div id="customTagsList" style="font-size:12px;color:var(--tx3);">ここに追加したタグが表示されます（次回起動時に反映）</div>
+  </div>`;
+  const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
+  if(custom.length){
+    document.getElementById('customTagsList').innerHTML='<div style="font-weight:600;margin-bottom:6px;color:var(--tx2);">追加済みカスタムタグ</div>'
+      +custom.map((t,i)=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--br);">
+        <span>${escH(t.group)} / ${escH(t.tag)}</span>
+        <button class="btn btn-danger" style="font-size:10px;padding:2px 8px;" onclick="removeCustomTag(${i})">削除</button>
+      </div>`).join('');
+  }
+}
+function addNewTag(){
+  const group=document.getElementById('newTagGroup').value;
+  const tag=document.getElementById('newTagName').value.trim();
+  if(!tag){showToast('タグ名を入力してください');return;}
+  const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
+  custom.push({group,tag});
+  localStorage.setItem('ic_custom_adv_tags',JSON.stringify(custom));
+  showToast(`「${group} / ${tag}」を追加しました`);
+  renderAdvTagsCfg();
+}
+function removeCustomTag(i){
+  const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
+  custom.splice(i,1);
+  localStorage.setItem('ic_custom_adv_tags',JSON.stringify(custom));
+  renderAdvTagsCfg();
+}
+
+// ══════════════════════════════
+//  USERS
+// ══════════════════════════════
+function renderUsers(){
+  const tags=getTags();
+  const banned=getBanned();
+  // 匿名IDを収集（タグの保存から類推）
+  const el=document.getElementById('usersContent');
+  const uid=localStorage.getItem('ic_uid')||'unknown';
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-num">${Object.keys(tags).length}</div><div class="stat-label">タグ保存曲数</div></div>
+      <div class="stat-card"><div class="stat-num">${banned.length}</div><div class="stat-label">BAN済みID</div></div>
+      <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">月間ユーザー(準備中)</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--tx3);margin-bottom:16px;">
+      現在は匿名IDシステムです。Discordログイン対応後、より詳細なユーザー管理が可能になります。
+    </p>
+    <div class="tbl-wrap" style="max-width:500px;">
+      <table class="tbl">
+        <thead><tr><th>ユーザーID</th><th>状態</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-family:'Space Mono',monospace;font-size:11px;">${uid} (自分)</td>
+            <td><span class="badge green">アクティブ</span></td>
+            <td>—</td>
+          </tr>
+          ${banned.map(id=>`<tr>
+            <td style="font-family:'Space Mono',monospace;font-size:11px;">${escH(id)}</td>
+            <td><span class="badge red">BAN</span></td>
+            <td><button class="btn btn-sec" style="font-size:11px;padding:4px 8px;" onclick="unbanUser('${escH(id)}')">BAN解除</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
+      <input class="form-input" id="banUidInput" placeholder="BAN するユーザーID" style="width:240px;">
+      <button class="btn btn-danger" onclick="banUser()">BAN</button>
+    </div>
+  `;
+}
+function banUser(){
+  const id=document.getElementById('banUidInput').value.trim();
+  if(!id)return;
+  const b=getBanned();if(!b.includes(id))b.push(id);setBanned(b);
+  renderUsers();showToast(`${id} をBANしました`);
+}
+function unbanUser(id){
+  const b=getBanned();const i=b.indexOf(id);if(i>=0)b.splice(i,1);setBanned(b);
+  renderUsers();showToast(`${id} のBANを解除しました`);
+}
+
+// ══════════════════════════════
+//  SETTINGS
+// ══════════════════════════════
+function saveTos(){localStorage.setItem('ic_tos',document.getElementById('tosEditor').value);showToast('利用規約を保存しました');}
+function savePrivacy(){localStorage.setItem('ic_privacy',document.getElementById('privacyEditor').value);showToast('プライバシーポリシーを保存しました');}
+function saveSettings(){
+  const key=document.getElementById('apiKeyField').value.trim();
+  const pw=document.getElementById('newPwField').value.trim();
+  const adminToken=document.getElementById('adminTokenField').value.trim();
+  if(key)localStorage.setItem('ic_apikey',key);
+  if(pw)localStorage.setItem(MOD_PW_KEY,pw);
+  if(adminToken)localStorage.setItem(ADMIN_TOKEN_KEY,adminToken);
+  showToast('設定を保存しました');
+}
+function clearAllTags(){setTags({});showToast('全タグデータを削除しました');}
+
+// ══════════════════════════════
+//  TOAST
+// ══════════════════════════════
+let toastT;
+function showToast(msg){
+  clearTimeout(toastT);
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  toastT=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════
+//  INIT
+// ══════════════════════════════
+
+// ── スライダー・数値の同期 ──
+function syncTagInput(k,v){
+  const el=document.getElementById('tagEd_'+k);
+  if(el)el.value=v;
+}
+function syncTagSlider(k,v){
+  const el=document.getElementById('tagEdSlider_'+k);
+  if(el)el.value=v;
+}
+
+// ── 検索 ──
+function tagEdSearch(){
+  const q=(document.getElementById('tagEdSearch')?.value||'').trim().toLowerCase();
+  const res=document.getElementById('tagEdSearchRes');
+  if(!q||!res){if(res){res.style.display='none';res.innerHTML='';}return;}
+  const songs=getCache();
+  const matches=songs.filter(s=>
+    s.videoId.toLowerCase().includes(q)||
+    (s.title||'').toLowerCase().includes(q)||
+    (s.artist||'').toLowerCase().includes(q)
+  ).slice(0,10);
+  if(!matches.length){res.style.display='none';return;}
+  res.style.display='block';
+  res.innerHTML=matches.map(s=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;border-bottom:1px solid var(--br);transition:background .15s;"
+      onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''"
+      onclick="selectTagEdSong('${s.videoId}')">
+      <img src="https://img.youtube.com/vi/${s.videoId}/default.jpg" style="width:32px;border-radius:3px;flex-shrink:0;">
+      <div>
+        <div style="font-size:11px;color:var(--tx);font-weight:500;">${escH(s.title||s.videoId)}</div>
+        <div style="font-size:10px;color:var(--tx3);">${escH(s.artist||'')} · ${s.videoId}</div>
+      </div>
+    </div>`).join('');
+}
+function selectTagEdSong(vid){
+  const vidEl=document.getElementById('tagEdVid');
+  const resEl=document.getElementById('tagEdSearchRes');
+  const searchEl=document.getElementById('tagEdSearch');
+  if(vidEl)vidEl.value=vid;
+  if(resEl){resEl.style.display='none';resEl.innerHTML='';}
+  if(searchEl)searchEl.value='';
+  loadTagForEdit();
+}
+
+// ── タグ読み込み（スライダー同期 + 高度なタグ表示） ──
+function loadTagForEdit(){
+  const vid=(document.getElementById('tagEdVid')?.value||'').trim();
+  const msg=document.getElementById('tagEdMsg');
+  if(!vid){if(msg)msg.textContent='';return;}
+  const t=getTags()[vid];
+  const songs=getCache();
+  const song=songs.find(s=>s.videoId===vid)||{};
+  if(!t){
+    if(msg)msg.textContent='⚠ タグが見つかりません（新規作成可）';
+    renderTagEdAdv(vid,song,null);
+    return;
+  }
+  ['mood','rhythm','melody','origin'].forEach(k=>{
+    const num=document.getElementById('tagEd_'+k);
+    const sl=document.getElementById('tagEdSlider_'+k);
+    const v=t[k]??10;
+    if(num)num.value=v;
+    if(sl)sl.value=v;
+  });
+  if(msg)msg.textContent=`読み込み完了 ― ${t.votes||0}件の保存データ`;
+  renderTagEdAdv(vid,song,t);
+}
+
+// ── 高度なタグエリア描画 ──
+const MOD_ADV_GROUPS=[
+  {g:'ボーカル',t:['デフォ子（唄音ウタ）','重音テト','初音ミク','UTAU','ボカロ','インスト','その他']},
+  {g:'模倣枠', t:['.模倣','..模倣','教育模倣','アブジェ模倣','...模倣','表/裏模倣','名の無い星模倣','エヌ模倣','K²模倣','オリジナル模倣','三次模倣','short枠','FULL枠']},
+  {g:'使用楽器',t:['ピアノ','ギター','アコースティック','ベース','シンセ','三味線','エレピ','ドラム','パーカッション']},
+  {g:'雰囲気', t:['ポジティブ','ネガティブ','中毒性','キャッチー','実験的','ノスタルジー','悲しい','和風','人間味がある','ノイジー','レトロ','メロディアス','リズミカル','ミニマル','面白い','怖い','盛り上がる']},
+  {g:'ジャンル',t:['ポップス','EDM','ジャズ','ロック','ヒップホップ','シティポップ','クラシック','ボサノバ','ラテン','アンビエント']},
+  {g:'長さ',   t:['ショート尺(~2分)','ミディアム尺(2~5分)','ロング尺(5分~)']},
+  {g:'その他', t:['ループ曲','コラボ','自作音源','楽譜','ロゴあり','イラスト','ドット絵','教育文字','モーショングラフィックス','文字PV','DAW画面','モールス','二進数','鍵盤','波紋','点字','格子','リトマス','ヒラギノ/源ノ角フォント','k8x12Sフォント','美咲フォント','ネタ','予告','解読','英語','中国語','イミラスライル語','すべあな編曲']},
+];
+// カスタムタグを含む全グループを返す
+function getAllAdvGroups(){
+  const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
+  const groups=[...MOD_ADV_GROUPS.map(g=>({...g,t:[...g.t]}))];
+  custom.forEach(({group,tag})=>{
+    const g=groups.find(x=>x.g===group);
+    if(g){if(!g.t.includes(tag))g.t.push(tag);}
+    else groups.push({g:group,t:[tag]});
+  });
+  return groups;
+}
+
+function renderTagEdAdv(vid,song,tag){
+  const area=document.getElementById('tagEdAdvArea');
+  if(!area)return;
+  const selAdv=tag?.adv||[];
+  const advVotes=tag?.advVotes||{};
+  const title=song.title||vid;
+  area.innerHTML=`
+    <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;font-weight:500;">${escH(title)}</div>
+    ${getAllAdvGroups().map(g=>`
+      <div style="margin-bottom:8px;">
+        <div style="font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:3px;">${escH(g.g)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;">
+          ${g.t.map(t=>{
+            const v=advVotes[t]||{yes:0,total:0};
+            const rate=v.total?Math.round(v.yes/v.total*100):0;
+            const sel=selAdv.includes(t);
+            return `<button class="adv-chip${sel?' sel':''}"
+              style="font-size:10px;padding:2px 7px;"
+              onclick="this.classList.toggle('sel')">${escH(t)}${rate>0?`<span style="font-size:8px;opacity:.55;margin-left:2px;">${rate}%</span>`:''}
+            </button>`;
+          }).join('')}
+        </div>
+      </div>`).join('')}
+    <div style="margin-top:10px;">
+      <button class="btn btn-pri" style="font-size:11px;" onclick="saveModAdvTags('${escH(vid)}')">高度なタグを強制保存</button>
+    </div>`;
+}
+async function saveModAdvTags(vid){
+  const sel=[...document.querySelectorAll('#tagEdAdvArea .adv-chip.sel')]
+    .map(b=>b.textContent.trim().replace(/\s*\d+%$/, ''));
+  try{
+    const res=await apiFetch('/api/adv-tags',{method:'POST',body:{userId:'mod_panel',videoId:vid,tags:sel}});
+    REMOTE_TAGS[vid]=res.tag;
+  }catch(e){showToast('高度なタグ保存に失敗しました');return;}
+  showToast('高度なタグを強制保存しました');
+}
+
+// ── タグエディターから削除 ──
+async function deleteTagByEditor(){
+  const vid=(document.getElementById('tagEdVid')?.value||'').trim();
+  if(!vid){showToast('VideoIDを入力してください');return;}
+  if(!confirm(`${vid} のタグデータを削除しますか？`))return;
+  try{
+    await apiFetch('/api/tag-delete',{method:'POST',body:{videoId:vid}});
+  }catch(e){showToast('削除に失敗しました');return;}
+  const t=getTags();delete t[vid];setTags(t);
+  showToast('削除しました');
+  const msg=document.getElementById('tagEdMsg');
+  if(msg)msg.textContent='削除しました';
+}
+
+// ── 高度なタグ設定パネル ──
+function renderAdvCfgPanel(el){
+  const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
+  const groups=getAllAdvGroups();
+  const groupNames=groups.map(g=>g.g);
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+      <!-- 左: 追加フォーム -->
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;">タグを追加</div>
+        <div class="form-group">
+          <label class="form-label">グループ</label>
+          <select class="form-input" id="newTagGroup" style="width:100%;" onchange="toggleNewGroupInput()">
+            ${groupNames.map(g=>`<option>${escH(g)}</option>`).join('')}
+            <option value="__new">＋ 新しいグループ...</option>
+          </select>
+        </div>
+        <div class="form-group" id="newGroupNameWrap" style="display:none;">
+          <label class="form-label">新しいグループ名</label>
+          <input class="form-input" id="newGroupName" placeholder="グループ名" style="width:100%;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">タグ名</label>
+          <input class="form-input" id="newTagName" placeholder="タグ名を入力" style="width:100%;">
+        </div>
+        <button class="btn btn-pri" onclick="addAdvTag()">追加する</button>
+      </div>
+      <!-- 右: 追加済みカスタムタグ一覧 -->
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;">追加済みカスタムタグ</div>
+        ${custom.length===0
+          ? '<p style="font-size:12px;color:var(--tx3);">追加されたカスタムタグはありません</p>'
+          : custom.map((item,idx)=>`
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--br);">
+              <span style="font-size:12px;">${escH(item.group)} / <strong>${escH(item.tag)}</strong></span>
+              <button class="btn btn-danger" style="font-size:10px;padding:3px 8px;" onclick="removeAdvTag(${idx})">削除</button>
+            </div>`).join('')
+        }
+      </div>
+    </div>`;
+}
+function toggleNewGroupInput(){
+  const sel=document.getElementById('newTagGroup');
+  const wrap=document.getElementById('newGroupNameWrap');
+  if(wrap)wrap.style.display=sel?.value==='__new'?'block':'none';
+}
+function addAdvTag(){
+  const sel=document.getElementById('newTagGroup');
+  let group=sel?.value==='__new'
+    ?(document.getElementById('newGroupName')?.value||'').trim()
+    :sel?.value;
+  const tag=(document.getElementById('newTagName')?.value||'').trim();
+  if(!group||!tag){showToast('グループとタグ名を入力してください');return;}
+  const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
+  if(custom.some(x=>x.group===group&&x.tag===tag)){showToast('すでに存在するタグです');return;}
+  custom.push({group,tag});
+  localStorage.setItem('ic_custom_adv_tags',JSON.stringify(custom));
+  showToast(`「${group} / ${tag}」を追加しました`);
+  showTagTab('adv_cfg');
+}
+function removeAdvTag(idx){
+  const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
+  const removed=custom.splice(idx,1)[0];
+  localStorage.setItem('ic_custom_adv_tags',JSON.stringify(custom));
+  showToast(`「${removed.tag}」を削除しました`);
+  showTagTab('adv_cfg');
+}
+
+async function init(){
+  if(sessionStorage.getItem(SESSION_KEY)==='1'){
+    try{
+      await syncRemoteData();
+    }catch(e){
+      showToast('共有データの取得に失敗しました');
+    }
+    renderDashboard();
+    const uid=localStorage.getItem('ic_uid')||'guest';
+    const el=document.getElementById('modUserId');
+    const ic=document.getElementById('modUserIcon');
+    if(el)el.textContent=uid.length>14?uid.slice(0,14)+'…':uid;
+    if(ic)ic.textContent=uid.slice(-2).toUpperCase();
+  }
+}
+if(sessionStorage.getItem(SESSION_KEY)==='1') init();
+</script>
+</body>
+</html>

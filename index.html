@@ -1,0 +1,2343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imitate Collection</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f0f;--bg2:#181818;--s1:#212121;--s2:#2a2a2a;--s3:#333;
+  --br:#3d3d3d;--br2:#505050;
+  --tx:#f1f1f1;--tx2:#aaa;--tx3:#777;
+  --ac:#1a6ee8;--ac2:#4d94ff;--ac-d:rgba(26,110,232,.15);
+  --c0:#818cf8;--c1:#fbbf24;--c2:#f472b6;--c3:#4ade80;
+}
+*,::before,::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans JP',sans-serif;font-weight:400;min-height:100vh;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+button{cursor:pointer;font-family:inherit;border:none;background:none;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px;}
+
+/* ═══ HEADER ═══ */
+.hdr{position:fixed;top:0;left:0;right:0;height:54px;background:rgba(15,15,15,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--br);display:flex;align-items:center;padding:0 14px;gap:10px;z-index:300;}
+.logo{display:flex;align-items:center;gap:8px;flex-shrink:0;text-decoration:none;}
+.logo-icon{width:28px;height:28px;background:var(--ac);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;letter-spacing:-.5px;}
+.logo-wrap{display:flex;flex-direction:column;line-height:1;}
+.logo-name{font-size:13px;font-weight:700;white-space:nowrap;}
+.logo-sub{font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.05em;white-space:nowrap;}
+.hdr-search{flex:1;max-width:500px;display:flex;align-items:center;background:var(--s1);border:1px solid var(--br);border-radius:24px;height:34px;transition:border-color .2s;}
+.hdr-search:focus-within{border-color:var(--br2);}
+.hdr-search input{flex:1;background:none;border:none;outline:none;color:var(--tx);font-size:13px;padding:0 14px;font-family:'Noto Sans JP',sans-serif;}
+.hdr-search input::placeholder{color:var(--tx3);}
+.hdr-search-ic{color:var(--tx3);padding:0 12px;font-size:14px;flex-shrink:0;}
+.hdr-right{display:flex;gap:6px;margin-left:auto;flex-shrink:0;align-items:center;}
+.hbtn{height:32px;padding:0 12px;border-radius:16px;font-size:12px;display:flex;align-items:center;gap:4px;transition:all .18s;border:1px solid var(--br);color:var(--tx2);background:none;}
+.hbtn:hover{background:var(--s1);color:var(--tx);border-color:var(--br2);}
+.hbtn.pri{background:var(--ac);border-color:transparent;color:#fff;}
+.hbtn.pri:hover{background:var(--ac2);}
+.api-dot{width:6px;height:6px;border-radius:50%;background:var(--tx3);display:inline-block;}
+.api-dot.ok{background:#22c55e;}
+
+/* ═══ RANDOM BANNER ═══ */
+.random-banner{background:linear-gradient(135deg,rgba(26,110,232,.18),rgba(10,60,140,.1));border:1px solid rgba(26,110,232,.35);border-radius:12px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.random-banner-text{font-size:13px;color:var(--tx2);line-height:1.5;}
+.random-banner-text strong{color:var(--tx);font-size:15px;display:block;margin-bottom:2px;}
+.random-big-btn{background:var(--ac);color:#fff;padding:12px 28px;border-radius:24px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;transition:all .2s;border:none;white-space:nowrap;box-shadow:0 4px 20px rgba(26,110,232,.4);}
+.random-big-btn:hover{background:var(--ac2);transform:scale(1.04);box-shadow:0 6px 24px rgba(26,110,232,.5);}
+
+/* ═══ PLAYER OVERLAY ═══ */
+.player-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .25s;}
+.player-overlay.open{opacity:1;pointer-events:all;}
+.player-box{transform:translateY(16px) scale(.97);}
+
+.player-hd{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 16px 10px;border-bottom:1px solid var(--br);}
+.player-title{font-size:15px;font-weight:600;line-height:1.3;max-width:calc(100% - 40px);}
+.player-sub{font-size:11px;color:var(--tx3);margin-top:2px;}
+.player-x{color:var(--tx3);font-size:18px;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .18s;flex-shrink:0;}
+.player-x:hover{background:var(--s2);color:var(--tx);}
+.player-embed{padding:12px 16px 0;aspect-ratio:16/9;background:var(--s1);border-radius:8px;overflow:hidden;}
+.player-embed iframe{width:100%;height:100%;border:none;border-radius:8px;display:block;}
+.player-actions{padding:14px 16px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.player-vote-area{background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:12px 14px;margin:0 16px 0;flex:1;}
+.player-vote-lbl{font-size:10px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:8px;}
+.player-vote-sliders{display:flex;flex-direction:column;gap:6px;}
+.pv-row{display:flex;align-items:center;gap:8px;}
+.pv-lbl{font-size:9px;color:var(--tx3);width:28px;flex-shrink:0;text-align:right;}
+.pv-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.12);outline:none;cursor:pointer;}
+.pv-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--accent-color,#818cf8);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5);}
+.pv-val{font-size:9px;font-family:'Space Mono',monospace;color:var(--tx3);width:14px;text-align:right;}
+.player-ft{padding:10px 16px 16px;border-top:1px solid var(--br);display:flex;gap:8px;flex-wrap:wrap;}
+.player-next-btn{background:var(--ac);color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;font-weight:600;flex:1;transition:all .2s;}
+.player-next-btn:hover{background:var(--ac2);}
+.player-pass-btn{background:var(--s1);border:1px solid var(--br);color:var(--tx2);padding:9px 16px;border-radius:20px;font-size:13px;transition:all .18s;}
+.player-pass-btn:hover{background:var(--s2);color:var(--tx);}
+.player-vote-submit{background:var(--s2);border:1px solid var(--br2);color:var(--tx);padding:7px 16px;border-radius:16px;font-size:12px;transition:all .18s;}
+.player-vote-submit:hover{background:var(--s3);border-color:var(--tx2);}
+.player-yt-link{color:var(--ac2);font-size:11px;display:flex;align-items:center;gap:4px;padding:7px 12px;border-radius:12px;border:1px solid rgba(26,110,232,.3);transition:all .18s;}
+.player-yt-link:hover{background:rgba(26,110,232,.1);}
+
+/* ═══ LIKE BUTTON ═══ */
+.like-btn{background:var(--s1);border:1px solid var(--br);color:var(--tx3);padding:4px 10px;border-radius:10px;font-size:11px;display:flex;align-items:center;gap:4px;transition:all .18s;cursor:pointer;}
+.like-btn:hover{border-color:var(--ac2);color:var(--ac2);}
+.like-btn.liked{background:rgba(26,110,232,.12);border-color:rgba(26,110,232,.5);color:var(--ac2);}
+
+/* ═══ HOVER SLIDER ═══ */
+.card-hover-sliders{position:absolute;inset:0;background:rgba(8,8,8,.93);backdrop-filter:blur(6px);padding:10px;display:flex;flex-direction:column;justify-content:center;gap:5px;opacity:0;pointer-events:none;transition:opacity .22s;}
+.card-thumb-area:hover .card-hover-sliders{opacity:1;pointer-events:all;}
+.chs-head{font-size:9px;color:rgba(255,255,255,.45);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:2px;display:flex;justify-content:space-between;}
+.chs-row{display:flex;align-items:center;gap:5px;}
+.chs-lbl{font-size:8px;color:rgba(255,255,255,.45);width:22px;flex-shrink:0;text-align:right;}
+.chs-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.15);outline:none;cursor:pointer;}
+.chs-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--accent-color,#818cf8);cursor:pointer;}
+.chs-val{font-size:8px;font-family:'Space Mono',monospace;color:rgba(255,255,255,.4);width:12px;text-align:right;}
+.chs-save-btn{margin-top:3px;background:var(--ac);color:#fff;border-radius:6px;font-size:10px;font-weight:600;padding:5px;width:100%;transition:background .18s;}
+.chs-save-btn:hover{background:var(--ac2);}
+.card-thumb-area:hover .card-minibars{opacity:0;pointer-events:none;transition:opacity .2s;}
+
+/* ═══ MAIN ═══ */
+.main{margin-top:54px;padding:0 14px 80px;max-width:1800px;margin-left:auto;margin-right:auto;}
+@media(min-width:768px){.main{padding:0 20px 80px;}}
+
+/* ═══ CATEGORY CHIPS ═══ */
+.chips-wrap{position:sticky;top:54px;z-index:200;background:rgba(15,15,15,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--br);padding:8px 0;}
+.chips-scroll{display:flex;gap:6px;overflow-x:auto;padding:0 14px;scrollbar-width:none;}
+.chips-scroll::-webkit-scrollbar{display:none;}
+.chip{flex-shrink:0;padding:4px 14px;background:var(--s1);border:1px solid var(--br);border-radius:16px;font-size:12px;color:var(--tx2);cursor:pointer;transition:all .18s;white-space:nowrap;}
+.chip:hover{border-color:var(--br2);color:var(--tx);}
+.chip.active{background:var(--s1);border-color:var(--tx);color:var(--tx);font-weight:500;}
+
+/* ═══ SORT BAR ═══ */
+.sort-bar{display:flex;align-items:center;gap:0;padding:14px 0 10px;border-bottom:1px solid var(--br);margin-bottom:16px;}
+.sort-btn{padding:6px 14px;font-size:12px;color:var(--tx3);border-radius:4px;transition:all .18s;display:flex;align-items:center;gap:5px;font-weight:400;}
+.sort-btn:hover{color:var(--tx);background:var(--s1);}
+.sort-btn.active{color:var(--tx);font-weight:500;}
+.sort-btn.active::after{content:'';display:block;width:100%;height:2px;background:var(--tx);position:absolute;bottom:-1px;left:0;}
+.sort-btn{position:relative;}
+.sort-sep{width:1px;height:16px;background:var(--br);margin:0 4px;}
+
+/* ═══ SECTION HEADER ═══ */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:6px;}
+.sec-hd h2{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;}
+.cnt-badge{font-size:10px;background:var(--s2);border:1px solid var(--br);color:var(--tx3);border-radius:4px;padding:1px 7px;font-family:'Space Mono',monospace;}
+.cnt-badge.hi{background:rgba(26,110,232,.12);border-color:rgba(26,110,232,.4);color:var(--ac2);}
+.sec-act{display:flex;gap:6px;}
+.sec-btn{background:var(--s1);border:1px solid var(--br);color:var(--tx2);padding:4px 11px;border-radius:14px;font-size:12px;transition:all .18s;}
+.sec-btn:hover{background:var(--s2);color:var(--tx);}
+
+/* ═══ CARDS GRID ═══ */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;}
+@media(max-width:480px){.cards-grid{grid-template-columns:repeat(2,1fr);gap:8px;}}
+
+/* ═══ SONG CARD ═══ */
+.song-card{border-radius:8px;overflow:visible;background:var(--bg);transition:transform .2s;cursor:default;}
+.song-card[data-hidden]{display:none;}
+.card-thumb-area{position:relative;aspect-ratio:16/9;background:var(--s1);overflow:hidden;border-radius:8px;}
+.card-thumb{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .3s,transform .3s;}
+.card-thumb.loading{opacity:0;}
+.card-thumb-area:hover .card-thumb{transform:scale(1.04);}
+.card-dur{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.85);color:#fff;font-size:10px;font-family:'Space Mono',monospace;padding:1px 5px;border-radius:3px;}
+
+/* hover action bar */
+.card-hover-bar{position:absolute;top:0;left:0;right:0;padding:6px;display:flex;justify-content:flex-end;gap:4px;background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);opacity:0;transition:opacity .2s;}
+.card-thumb-area:hover .card-hover-bar{opacity:1;}
+.chb-btn{background:rgba(0,0,0,.6);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;display:flex;align-items:center;gap:3px;transition:all .18s;}
+.chb-btn:hover{background:rgba(255,255,255,.15);}
+.chb-btn.yt:hover{background:rgba(26,110,232,.8);border-color:transparent;}
+.chb-btn.tg:hover{background:rgba(130,82,240,.7);border-color:transparent;}
+.chb-btn.sm:hover{background:rgba(59,130,246,.7);border-color:transparent;}
+
+
+/* mini tag bars (passive) */
+.card-minibars{position:absolute;bottom:0;left:0;right:0;padding:3px 6px 5px;background:linear-gradient(transparent,rgba(0,0,0,.75));display:flex;flex-direction:column;gap:2px;pointer-events:none;}
+.cmb-row{display:flex;align-items:center;gap:4px;}
+.cmb-lbl{font-size:7px;color:rgba(255,255,255,.5);font-family:'Space Mono',monospace;width:24px;flex-shrink:0;letter-spacing:0;}
+.cmb-track{flex:1;height:2px;background:rgba(255,255,255,.12);border-radius:1px;}
+.cmb-fill{height:100%;border-radius:1px;transition:width .3s;}
+.cmb-val{font-size:7px;color:rgba(255,255,255,.4);font-family:'Space Mono',monospace;width:10px;text-align:right;}
+
+/* untagged badge */
+.untagged-bd{position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.6);border:1px dashed rgba(255,255,255,.2);color:rgba(255,255,255,.35);font-size:8px;font-family:'Space Mono',monospace;padding:1px 5px;border-radius:3px;letter-spacing:.06em;}
+
+/* inline tag edit panel */
+.card-tag-panel{position:absolute;inset:0;background:rgba(10,10,10,.92);backdrop-filter:blur(6px);padding:10px 10px 8px;transform:translateY(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;gap:6px;}
+.card-tag-panel.open{transform:translateY(0);}
+.ctp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
+.ctp-title{font-size:10px;color:rgba(255,255,255,.6);font-family:'Space Mono',monospace;letter-spacing:.08em;}
+.ctp-close{color:rgba(255,255,255,.4);font-size:14px;line-height:1;padding:2px 4px;transition:color .15s;}
+.ctp-close:hover{color:#fff;}
+.ctp-row{display:flex;align-items:center;gap:6px;}
+.ctp-label{font-size:9px;color:rgba(255,255,255,.5);width:26px;flex-shrink:0;text-align:right;}
+.ctp-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.15);outline:none;cursor:pointer;}
+.ctp-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid var(--accent-color,#818cf8);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.5);}
+.ctp-val{font-size:9px;font-family:'Space Mono',monospace;color:rgba(255,255,255,.5);width:14px;text-align:right;}
+.ctp-subrow{display:flex;justify-content:space-between;font-size:7px;color:rgba(255,255,255,.25);font-family:'Space Mono',monospace;padding:0 20px 0 32px;margin-top:-3px;}
+.ctp-actions{display:flex;gap:5px;margin-top:2px;}
+.ctp-save{flex:1;background:var(--ac);color:#fff;padding:5px;border-radius:5px;font-size:11px;font-weight:500;transition:background .18s;}
+.ctp-save:hover{background:var(--ac2);}
+.ctp-adv{background:var(--s2);border:1px solid var(--br);color:var(--tx2);padding:5px 8px;border-radius:5px;font-size:11px;transition:all .18s;}
+.ctp-adv:hover{border-color:var(--br2);color:var(--tx);}
+
+/* ═══ CARD INFO ═══ */
+.card-info{display:flex;gap:8px;padding:8px 8px 6px;}
+.card-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;margin-top:1px;}
+.card-avatar img{width:100%;height:100%;object-fit:cover;}
+.card-meta{flex:1;min-width:0;}
+.card-title{font-size:13px;font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:2px;color:var(--tx);}
+.card-artist{font-size:11px;color:var(--tx3);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-stats{font-size:10px;color:var(--tx3);display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.card-cat-tag{font-size:9px;background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:1px 6px;color:var(--tx3);}
+
+/* ═══ SKELETON ═══ */
+.sk-card{border-radius:8px;overflow:hidden;}
+.sk{background:linear-gradient(90deg,var(--s1) 25%,var(--s2) 50%,var(--s1) 75%);background-size:200% 100%;animation:skshimmer 1.4s infinite;border-radius:3px;}
+@keyframes skshimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk-thumb{aspect-ratio:16/9;border-radius:8px;margin-bottom:0;}
+.sk-info{padding:8px;display:flex;gap:8px;}
+.sk-av{width:32px;height:32px;border-radius:50%;flex-shrink:0;}
+.sk-lines{flex:1;}
+.sk-t1{height:11px;margin-bottom:5px;width:85%;}
+.sk-t2{height:9px;width:55%;}
+
+/* ═══ DIVIDER ═══ */
+.divider{border:none;border-top:1px solid var(--br);margin:32px 0 24px;position:relative;}
+.divider::after{content:attr(data-label);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg);padding:0 14px;font-size:10px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.15em;}
+
+/* ═══ FILTER PANEL ═══ */
+.filter-wrap{background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:16px 18px;margin-bottom:18px;}
+.filter-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.filter-head h3{font-size:12px;font-weight:600;color:var(--tx2);letter-spacing:.08em;display:flex;align-items:center;gap:6px;}
+.filter-reset{font-size:11px;color:var(--tx3);padding:3px 10px;border-radius:10px;border:1px solid var(--br);transition:all .18s;}
+.filter-reset:hover{border-color:var(--br2);color:var(--tx);}
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 24px;}
+
+/* dual range */
+.fi-wrap{}
+.fi-head{display:flex;justify-content:space-between;margin-bottom:5px;}
+.fi-label{font-size:11px;font-weight:500;display:flex;align-items:center;gap:4px;}
+.fi-vals{font-family:'Space Mono',monospace;font-size:10px;color:var(--ac2);}
+.dual-range{position:relative;height:18px;}
+.dr-track{position:absolute;top:50%;transform:translateY(-50%);width:100%;height:3px;background:var(--s2);border-radius:2px;pointer-events:none;}
+.dr-fill{position:absolute;height:100%;border-radius:2px;pointer-events:none;}
+.dual-range input[type=range]{position:absolute;width:100%;top:50%;transform:translateY(-50%);-webkit-appearance:none;appearance:none;background:transparent;pointer-events:none;height:3px;margin:0;}
+.dual-range input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:#fff;border-radius:50%;cursor:pointer;pointer-events:all;border:2px solid var(--thumb-color,#818cf8);box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform .1s;}
+.dual-range input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3);}
+.fi-sublabels{display:flex;justify-content:space-between;font-size:8px;color:var(--tx3);font-family:'Space Mono',monospace;margin-top:3px;letter-spacing:.02em;}
+
+/* ═══ LOADING ═══ */
+.load-progress{padding:14px 0 8px;}
+.lp-bar-wrap{height:2px;background:var(--s2);border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.lp-bar{height:100%;background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:2px;transition:width .4s ease;width:0%;}
+.lp-text{font-size:11px;color:var(--tx3);font-family:'Space Mono',monospace;display:flex;align-items:center;gap:6px;}
+.lp-dot{width:5px;height:5px;border-radius:50%;background:var(--ac);animation:lpdot 1s ease-in-out infinite;}
+@keyframes lpdot{0%,100%{opacity:.2}50%{opacity:1}}
+
+/* ═══ MODALS ═══ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:400;display:flex;align-items:center;justify-content:center;padding:12px;opacity:0;pointer-events:none;transition:opacity .22s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--bg2);border:1px solid var(--br);border-radius:12px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;transform:translateY(14px) scale(.97);transition:transform .22s;}
+.overlay.open .modal{transform:none;}
+.modal-hd{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 16px 12px;border-bottom:1px solid var(--br);position:sticky;top:0;background:var(--bg2);z-index:2;border-radius:12px 12px 0 0;}
+.modal-title{font-size:15px;font-weight:600;line-height:1.2;margin-bottom:2px;}
+.modal-sub{font-size:11px;color:var(--tx3);}
+.modal-x{color:var(--tx3);font-size:18px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .18s;flex-shrink:0;}
+.modal-x:hover{background:var(--s2);color:var(--tx);}
+.modal-body{padding:14px 16px;}
+.modal-ft{padding:10px 16px 14px;border-top:1px solid var(--br);display:flex;gap:7px;}
+
+/* form */
+.fld{margin-bottom:12px;}
+.fld-label{display:block;font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.14em;color:var(--tx3);margin-bottom:4px;}
+.fld-input{width:100%;background:var(--s1);border:1px solid var(--br);color:var(--tx);padding:8px 10px;font-size:13px;font-family:'Noto Sans JP',sans-serif;outline:none;border-radius:6px;transition:border-color .18s;}
+.fld-input:focus{border-color:var(--br2);}
+.fld-input::placeholder{color:var(--tx3);opacity:.5;}
+.fld-note{font-size:10px;color:var(--tx3);margin-top:4px;line-height:1.5;}
+.fld-note a{color:var(--ac2);text-decoration:underline;}
+
+.btn-pri{background:var(--ac);color:#fff;padding:8px;border-radius:7px;font-size:13px;font-weight:500;transition:background .18s;border:none;flex:1;}
+.btn-pri:hover{background:var(--ac2);}
+.btn-sec{background:var(--s1);border:1px solid var(--br);color:var(--tx2);padding:8px 16px;border-radius:7px;font-size:13px;transition:all .18s;}
+.btn-sec:hover{background:var(--s2);color:var(--tx);}
+
+/* ═══ ADVANCED TAGS ═══ */
+.adv-group{margin-bottom:12px;}
+.adv-group-lbl{font-size:10px;font-family:'Space Mono',monospace;color:var(--tx3);letter-spacing:.12em;margin-bottom:6px;}
+.adv-chips-wrap{display:flex;flex-wrap:wrap;gap:5px;}
+.adv-chip{padding:4px 10px;background:var(--s1);border:1px solid var(--br);border-radius:12px;font-size:11px;color:var(--tx2);cursor:pointer;transition:all .18s;user-select:none;}
+.adv-chip:hover{border-color:var(--br2);color:var(--tx);}
+.adv-chip.sel{background:var(--s2);border-color:var(--tx2);color:var(--tx);}
+
+/* ═══ SIMILAR MODAL ═══ */
+.sim-ref-thumb{border-radius:8px;overflow:hidden;margin-bottom:12px;position:relative;aspect-ratio:16/9;background:var(--s1);}
+.sim-ref-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.sim-ref-over{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.7) 0%,transparent 55%);display:flex;align-items:flex-end;padding:10px;}
+.sim-ref-over .srt{font-size:14px;font-weight:600;}
+.sim-ref-over .sra{font-size:11px;color:rgba(255,255,255,.6);}
+.sim-list{display:flex;flex-direction:column;gap:1px;background:var(--br);border-radius:8px;overflow:hidden;}
+.sim-item{background:var(--bg2);display:flex;gap:9px;padding:9px 11px;cursor:pointer;transition:background .18s;align-items:center;}
+.sim-item:hover{background:var(--s1);}
+.sim-item-thumb{width:76px;aspect-ratio:16/9;border-radius:4px;overflow:hidden;background:var(--s1);flex-shrink:0;}
+.sim-item-thumb img{width:100%;height:100%;object-fit:cover;}
+.sim-item-title{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sim-item-artist{font-size:10px;color:var(--tx3);}
+.sim-dist{font-family:'Space Mono',monospace;font-size:9px;color:var(--ac2);flex-shrink:0;margin-left:auto;}
+
+/* ═══ EMPTY ═══ */
+.empty{text-align:center;padding:44px 20px;color:var(--tx3);grid-column:1/-1;}
+.empty-ic{font-size:36px;margin-bottom:10px;}
+.empty-t{font-size:14px;font-weight:500;color:var(--tx2);margin-bottom:5px;}
+.empty-d{font-size:12px;line-height:1.7;}
+
+/* ═══ LOAD MORE ═══ */
+.more-wrap{text-align:center;margin-top:20px;}
+.more-btn{background:var(--s1);border:1px solid var(--br);color:var(--tx2);padding:8px 24px;border-radius:18px;font-size:12px;transition:all .18s;}
+.more-btn:hover{background:var(--s2);color:var(--tx);}
+
+/* ═══ ERROR ═══ */
+.err-banner{background:rgba(26,110,232,.1);border:1px solid rgba(26,110,232,.3);border-left:3px solid var(--ac);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#ddd;line-height:1.7;}
+.err-banner strong{color:var(--ac2);}
+.err-banner code{background:var(--s2);padding:1px 5px;border-radius:3px;font-size:10px;font-family:'Space Mono',monospace;}
+
+/* ═══ TOAST ═══ */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--s2);border:1px solid var(--br2);color:var(--tx);padding:8px 16px;border-radius:7px;font-size:12px;z-index:600;opacity:0;transition:all .25s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.6);white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ═══ API KEY INLINE ═══ */
+.api-inline{position:fixed;top:54px;right:14px;background:var(--bg2);border:1px solid var(--br);border-radius:8px;padding:12px 14px;width:280px;z-index:250;box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateY(-8px);opacity:0;pointer-events:none;transition:all .2s;}
+.api-inline.open{transform:translateY(4px);opacity:1;pointer-events:all;}
+.api-inline-title{font-size:11px;font-weight:600;margin-bottom:6px;color:var(--tx2);}
+.api-inline-note{font-size:10px;color:var(--tx3);margin-bottom:8px;line-height:1.5;}
+
+/* ─── HEADER NEW BTNS ─── */
+.hbtn-nav{height:32px;padding:0 14px;border-radius:16px;font-size:12px;display:flex;align-items:center;gap:5px;transition:all .18s;border:1px solid transparent;color:var(--tx2);background:none;cursor:pointer;}
+.hbtn-nav:hover{background:var(--s1);color:var(--tx);}
+.hbtn-nav.active{background:var(--ac-d);border-color:var(--ac);color:var(--ac2);}
+
+/* ─── CARD 3-DOT MENU ─── */
+/* 旧: サムネ内のボタン → 無効化 */
+.card-menu-btn{display:none;}
+/* 新: タイトル行右端のボタン */
+.card-dot-btn{background:none;border:none;color:var(--tx3);padding:0 2px;font-size:16px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;flex-shrink:0;border-radius:4px;}
+.song-card:hover .card-dot-btn{opacity:1;}
+.card-dot-btn:hover{background:var(--s2);color:var(--tx);}
+/* ドロップダウン: card-meta を基準に, overflow visible で card 外にはみ出す */
+.card-meta{position:relative;overflow:visible;}
+.card-dropdown{position:absolute;top:20px;right:0;background:var(--s1);border:1px solid var(--br);border-radius:8px;min-width:180px;z-index:500;box-shadow:0 6px 20px rgba(0,0,0,.7);overflow:hidden;display:none;}
+.card-dropdown.open{display:block;}
+.card-dd-item{display:flex;align-items:center;gap:8px;padding:9px 13px;font-size:12px;color:var(--tx2);cursor:pointer;transition:background .15s;white-space:nowrap;}
+.card-dd-item:hover{background:var(--s2);color:var(--tx);}
+.card-dd-item.danger{color:#f87171;}
+.card-dd-sep{height:1px;background:var(--br);margin:3px 0;}
+
+/* ─── REPORT MODAL ─── */
+.report-group{margin-bottom:12px;}
+.report-label{font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px;display:block;}
+.report-radio-group{display:flex;flex-direction:column;gap:6px;}
+.report-radio{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx2);cursor:pointer;}
+.report-radio input{accent-color:var(--ac);}
+
+/* ─── EXPANDABLE MODAL ─── */
+.exp-modal-wrap{display:flex;align-items:stretch;max-height:88vh;overflow:hidden;border-radius:12px;}
+.exp-modal-main{flex-shrink:0;width:440px;max-width:100%;display:flex;flex-direction:column;overflow:hidden;border-radius:12px 0 0 12px;}
+.exp-modal-main .modal-body{overflow-y:auto;flex:1;}
+.exp-modal-side{width:0;overflow:hidden;transition:width .32s cubic-bezier(.4,0,.2,1);background:var(--bg2);border-left:0px solid var(--br);border-radius:0 12px 12px 0;display:flex;flex-direction:column;flex-shrink:0;}
+.exp-modal-side.open{width:460px;border-left-width:1px;}
+@media(max-width:950px){
+  .exp-modal-wrap{flex-direction:column;max-height:90vh;}
+  .exp-modal-main,.exp-modal-side{width:100%!important;border-radius:0;}
+  .exp-modal-main{border-radius:12px 12px 0 0;}
+  .exp-modal-side{border-left:none!important;border-top:1px solid var(--br);border-radius:0 0 12px 12px;}
+  .exp-modal-side.open{width:100%!important;}
+}
+.exp-side-inner{padding:12px 16px;overflow-y:auto;flex:1;min-width:440px;}
+.exp-side-head{font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--br);}
+.exp-side-ft{padding:10px 14px;border-top:1px solid var(--br);display:flex;gap:6px;flex-shrink:0;}
+.modal-hd{flex-shrink:0;}
+.modal-ft{flex-shrink:0;}
+
+/* ─── PLAYER EXPANDABLE ─── */
+.player-overlay{align-items:center;}
+.player-box{display:flex;align-items:stretch;background:var(--bg2);border:1px solid var(--br);border-radius:14px;
+  max-width:700px;width:calc(100vw - 32px);max-height:90vh;overflow:hidden;
+  transition:max-width .32s cubic-bezier(.4,0,.2,1),transform .25s;}
+
+.player-box.adv-open{max-width:1160px;}
+.player-main{flex-shrink:0;width:700px;max-width:100%;display:flex;flex-direction:column;overflow-y:auto;max-height:90vh;}
+@media(max-width:720px){.player-main{width:100%;}}
+.player-adv-side{width:0;overflow:hidden;transition:width .32s cubic-bezier(.4,0,.2,1);background:var(--bg2);border-left:0px solid var(--br);border-radius:0 14px 14px 0;display:flex;flex-direction:column;flex-shrink:0;}
+.player-adv-side.open{width:460px;border-left-width:1px;}
+@media(max-width:1160px){
+  .player-box.adv-open{max-width:calc(100vw - 32px);}
+  .player-box{flex-direction:column;}
+  .player-main{max-height:none;width:100%;}
+  .player-adv-side{width:100%!important;border-left:none!important;border-top:1px solid var(--br);border-radius:0 0 14px 14px;}
+  .player-adv-side.open{width:100%!important;}
+}
+
+/* ─── SAVED TAGS POPUP ─── */
+.stp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s;}
+.stp-overlay.open{opacity:1;pointer-events:all;}
+.stp-box{background:var(--bg2);border:1px solid var(--br);border-radius:12px;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;padding:18px;}
+.stp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.stp-head h3{font-size:13px;font-weight:600;}
+
+/* ─── FILTER GRID CENTER ─── */
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px 32px;justify-items:center;}
+.fi-wrap{width:100%;max-width:340px;}
+.adv-search-wrap{margin-top:14px;padding-top:14px;border-top:1px solid var(--br);}
+
+/* ─── USER AUTH ─── */
+.auth-bar{position:fixed;top:54px;right:14px;background:var(--bg2);border:1px solid var(--br);border-radius:8px;padding:12px 14px;width:260px;z-index:250;box-shadow:0 8px 24px rgba(0,0,0,.5);transform:translateY(-8px);opacity:0;pointer-events:none;transition:all .2s;}
+.auth-bar.open{transform:translateY(4px);opacity:1;pointer-events:all;}
+.auth-avatar{width:32px;height:32px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;overflow:hidden;}
+.auth-avatar img{width:100%;height:100%;object-fit:cover;}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="hdr">
+  <a class="logo" href="#">
+    <div class="logo-icon"><img src="icon_2023.png" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" alt=""></div>
+    <div class="logo-wrap">
+      <span class="logo-name">Imitate Collection</span>
+      <span class="logo-sub" style="color:var(--tx3);font-size:9px;">Closed release ver.</span>
+    </div>
+  </a>
+  <div class="hdr-search">
+    <span class="hdr-search-ic">🔍</span>
+    <input id="searchInput" type="text" placeholder="曲名・投稿者で検索...">
+  </div>
+  <div class="hdr-right">
+    <button class="hbtn-nav" id="navRandom" onclick="openRandomPlayer()">🎲 ランダム試聴</button>
+    <button class="hbtn-nav" id="navList" onclick="scrollToMain()">🎵 楽曲一覧</button>
+    <button class="hbtn-nav" id="navFilter" onclick="scrollToFilter()">🎛 絞り込み</button>
+    <button class="hbtn-nav" id="userBtn" onclick="toggleAuthBar()" style="padding:0 8px;">
+      <div class="auth-avatar" id="userAvatar">?</div>
+    </button>
+  </div>
+</header>
+
+
+
+<!-- ═══ CATEGORY CHIPS ═══ -->
+<div class="chips-wrap" id="chipsWrap" style="display:none;">
+  <div class="chips-scroll" id="chipsScroll"></div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main" id="mainContent">
+  <div id="errBanner" style="display:none;"></div>
+  <div id="loadProgress" style="display:none;" class="load-progress">
+    <div class="lp-bar-wrap"><div class="lp-bar" id="lpBar"></div></div>
+    <div class="lp-text"><div class="lp-dot"></div><span id="lpText">読み込み中...</span></div>
+  </div>
+
+  <!-- SORT BAR -->
+  <div class="sort-bar" id="sortBar">
+    <button class="sort-btn active" data-sort="random" onclick="setSort('random')">ランダム</button>
+    <div class="sort-sep"></div>
+    <button class="sort-btn" data-sort="new" onclick="setSort('new')">新着順</button>
+    <div class="sort-sep"></div>
+    <button class="sort-btn" data-sort="tagged" onclick="setSort('tagged')">タグ保存数順</button>
+    <div class="sort-sep"></div>
+    <button class="sort-btn" data-sort="untagged" onclick="setSort('untagged')">タグ未登録</button>
+  </div>
+
+  <!-- RANDOM/SORTED GRID -->
+  <div class="sec-hd">
+    <h2>楽曲一覧 <span class="cnt-badge hi" id="totalBadge">読込中...</span></h2>
+    <div class="sec-act">
+      <button class="sec-btn" id="shuffleBtn" onclick="doShuffle()">↻ シャッフル</button>
+    </div>
+  </div>
+  <div class="cards-grid" id="mainGrid"></div>
+  <div class="more-wrap" id="mainMore" style="display:none;">
+    <button class="more-btn" onclick="showMoreMain()">さらに表示する</button>
+  </div>
+
+  <!-- FILTER DIVIDER -->
+  <hr class="divider" data-label="タグで絞り込む" id="filter-sec">
+
+  <!-- FILTER SLIDERS -->
+  <div class="filter-wrap">
+    <div class="filter-head">
+      <h3>雰囲気タグで絞り込む <span style="font-size:9px;color:var(--tx3);font-weight:400;margin-left:4px;">（タグ登録済み楽曲のみ）</span></h3>
+      <div style="display:flex;gap:6px;">
+        <button class="filter-reset" id="advSearchToggle" onclick="toggleAdvSearch()">高度な検索 ▼</button>
+        <button class="filter-reset" onclick="resetFilters()">リセット</button>
+      </div>
+    </div>
+    <div class="filter-grid" id="filterGrid"></div>
+    <div id="advSearchArea" style="display:none;" class="adv-search-wrap"></div>
+  </div>
+
+  <div class="sec-hd" style="margin-top:6px;">
+    <h2>絞り込み結果 <span class="cnt-badge" id="filterBadge">—</span></h2>
+  </div>
+  <div class="cards-grid" id="filterGrid2"></div>
+  <div class="more-wrap" id="filterMore" style="display:none;">
+    <button class="more-btn" onclick="showMoreFilter()">さらに表示する</button>
+  </div>
+</main>
+
+<!-- ═══ ADD SONG MODAL ═══ -->
+<div class="overlay" id="addOverlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <div><div class="modal-title">曲を追加する</div><div c
+      lass="modal-sub">YouTubeのURLを入力してください</div></div>
+      <button class="modal-x" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fld">
+        <label class="fld-label">YouTube URL *</label>
+        <input class="fld-input" id="addUrl" type="url" placeholder="https://www.youtube.com/watch?v=...">
+      </div>
+      <div id="addFetched" style="display:none;">
+        <div style="display:flex;gap:10px;background:var(--s1);border:1px solid var(--br);border-radius:8px;padding:10px;margin-bottom:12px;align-items:center;">
+          <img id="addThumb" src="" style="width:80px;aspect-ratio:16/9;object-fit:cover;border-radius:4px;">
+          <div style="flex:1;min-width:0;">
+            <div id="addTitle" style="font-size:13px;font-weight:500;margin-bottom:3px;"></div>
+            <div id="addArtist" style="font-size:11px;color:var(--tx3);"></div>
+          </div>
+        </div>
+      </div>
+      <div class="fld">
+        <label class="fld-label">カテゴリー（任意）</label>
+        <input class="fld-input" id="addCategory" type="text" placeholder="例：模倣曲、オリジナル...">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-pri" onclick="submitAdd()" id="addSubmitBtn" disabled>追加する</button>
+      <button class="btn-sec" onclick="closeAddModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAG EDIT MODAL ═══ -->
+<div class="overlay" id="tagEditOverlay" style="padding:12px;">
+  <div class="exp-modal-wrap" id="tagEditWrap">
+    <div class="modal exp-modal-main" id="tagEditMain">
+      <div class="modal-hd" style="border-radius:12px 0 0 0;">
+        <div><div class="modal-title">タグを編集</div><div class="modal-sub" id="tagEditSub"></div></div>
+        <button class="modal-x" onclick="closeTagEditModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:12px 16px;">
+        <div style="width:100%;aspect-ratio:16/9;background:var(--s1);border-radius:8px;overflow:hidden;margin-bottom:10px;">
+          <iframe id="tagEditFrame" src="" allowfullscreen
+            style="width:100%;height:100%;border:none;display:block;"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"></iframe>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px;" id="tagEditTitle"></div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:12px;" id="tagEditArtist"></div>
+        <div id="tagEditSliders"></div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:6px;" id="tagEditNote"></div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn-pri" onclick="submitTagEdit()">タグを保存する</button>
+        <button class="btn-sec" onclick="showSavedTagsPopup(currentTagEditVid)">保存済みタグ</button>
+        <button class="btn-sec" id="tagEditAdvBtn" onclick="toggleTagEditAdvSide()" style="margin-left:auto;">高度なタグ ▶</button>
+      </div>
+    </div>
+    <div class="exp-modal-side" id="tagEditAdvSide">
+      <div class="exp-side-inner" id="tagEditAdvBody"><div class="exp-side-head">高度なタグ</div></div>
+      <div class="exp-side-ft">
+        <button class="btn-pri" onclick="submitTagEditAdv()" style="font-size:12px;">高度なタグを保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SAVED TAGS POPUP ═══ -->
+<div class="stp-overlay" id="stpOverlay" onclick="if(event.target===this)closeSavedTagsPopup()">
+  <div class="stp-box">
+    <div class="stp-head">
+      <h3>保存済み高度なタグ</h3>
+      <button onclick="closeSavedTagsPopup()" style="background:none;border:none;color:var(--tx3);font-size:18px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="stpContent"></div>
+  </div>
+</div>
+
+<!-- ═══ REPORT MODAL ═══ -->
+<div class="overlay" id="reportOverlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-hd">
+      <div><div class="modal-title">⚠️ モデレーターへ報告</div><div class="modal-sub" id="reportSub"></div></div>
+      <button class="modal-x" onclick="closeReportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="report-group">
+        <label class="report-label">報告者の名前</label>
+        <input class="fld-input" id="reportName" type="text" placeholder="ニックネームでもOK">
+      </div>
+      <div class="report-group">
+        <label class="report-label">連絡先 (任意)</label>
+        <input class="fld-input" id="reportContact" type="text" placeholder="X / Discord / メール">
+      </div>
+      <div class="report-group">
+        <label class="report-label">報告種別</label>
+        <div class="report-radio-group">
+          <label class="report-radio"><input type="radio" name="reportType" value="not_kaiwai"> 界隈曲でない</label>
+          <label class="report-radio"><input type="radio" name="reportType" value="wrong_tag"> タグが明らかに異なる</label>
+          <label class="report-radio"><input type="radio" name="reportType" value="other" checked> その他</label>
+        </div>
+      </div>
+      <div class="report-group">
+        <label class="report-label">管理者へのコメント</label>
+        <textarea class="fld-input" id="reportComment" rows="3" placeholder="詳細を入力..."></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-pri" onclick="submitReport()">送信する</button>
+      <button class="btn-sec" onclick="closeReportModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AUTH BAR ═══ -->
+<div class="auth-bar" id="authBar">
+  <div id="authContent"></div>
+</div>
+
+<!-- ═══ SIMILAR MODAL ═══ -->
+<div class="overlay" id="simOverlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <div><div class="modal-title">似た雰囲気の楽曲</div><div class="modal-sub" id="simSub"></div></div>
+      <button class="modal-x" onclick="closeSimModal()">✕</button>
+    </div>
+    <div class="modal-body" id="simBody"></div>
+  </div>
+</div>
+
+<!-- ═══ RANDOM PLAYER OVERLAY ═══ -->
+<div class="player-overlay" id="playerOverlay">
+  <div class="player-box" id="playerBox">
+    <div class="player-main">
+      <div class="player-hd">
+        <div style="min-width:0;flex:1;">
+          <div class="player-title" id="playerTitle" style="word-break:keep-all;overflow-wrap:anywhere;">—</div>
+          <div class="player-sub" id="playerSub"></div>
+        </div>
+        <button class="player-x" onclick="closeRandomPlayer()">✕</button>
+      </div>
+      <div class="player-embed">
+        <iframe id="playerFrame" src="" allowfullscreen></iframe>
+      </div>
+      <div style="padding:10px 16px 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <a id="playerYtLink" class="player-yt-link" href="#" target="_blank">▶ YouTubeで開く</a>
+        <button class="like-btn" id="playerLikeBtn" onclick="togglePlayerLike()">♡ いいね <span id="playerLikeCnt">0</span></button>
+        <button class="like-btn" onclick="showSavedTagsPopup(S.currentPlayerVid)" style="margin-left:auto;">保存済みタグ</button>
+      </div>
+      <div style="padding:4px 16px 10px;">
+        <div class="player-vote-area" style="padding:10px 12px;">
+          <div class="player-vote-sliders" id="playerVoteSliders"></div>
+        </div>
+      </div>
+      <div class="player-ft">
+        <button class="player-pass-btn" onclick="nextRandomSong()">スキップ</button>
+        <button class="player-next-btn" onclick="saveAndNextSong()">タグを保存して次の曲へ →</button>
+        <button class="player-pass-btn" id="playerAdvBtn" onclick="togglePlayerAdvSide()">高度なタグ ▶</button>
+      </div>
+    </div>
+    <div class="player-adv-side" id="playerAdvSide">
+      <div class="exp-side-inner" id="playerAdvBody"><div class="exp-side-head">高度なタグ</div></div>
+      <div class="exp-side-ft">
+        <button class="btn-pri" onclick="submitPlayerAdvTags()" style="font-size:12px;">高度なタグを保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════
+const SHEET_ID = '1kkVYxRtlby7KuCcAO4ATT_4ruHUoIYZRN2bDoew8T9w';
+const SHEET_YEARS = [
+  {year:2018,gid:'0'},
+  {year:2019,gid:'1698956919'},
+  {year:2020,gid:'1610617513'},
+  {year:2021,gid:'642955471'},
+  {year:2022,gid:'1903730628'},
+  {year:2023,gid:'1622253645'},
+  {year:2024,gid:'1164276960'},
+  {year:2025,gid:'1309922952'},
+  {year:2026,gid:'922117181'},
+];
+const PROXIES = [
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+];
+const csvUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+
+const TAG_DIMS = [
+  {key:'mood',    label:'暗さ',    left:'ネガティブ', right:'ポジティブ', color:'#818cf8'},
+  {key:'rhythm',  label:'リズム',  left:'落ち着く',   right:'乗れる',    color:'#fbbf24'},
+  {key:'melody',  label:'メロ',    left:'無機質',     right:'エモい',    color:'#f472b6'},
+  {key:'origin',  label:'本家度',  left:'オリジナル', right:'すべあな',  color:'#4ade80'},
+];
+
+const ADV_TAG_GROUPS = [
+  {g:'ボーカル', t:['デフォ子（唄音ウタ）','重音テト','初音ミク','UTAU','ボカロ','インスト','その他']},
+  {g:'模倣枠',  t:['.模倣','..模倣','教育模倣','アブジェ模倣','...模倣','表/裏模倣','名の無い星模倣','エヌ模倣','K²模倣','オリジナル模倣','三次模倣','short枠','FULL枠']},
+  {g:'使用楽器', t:['ピアノ','ギター','アコースティック','ベース','シンセ','三味線','エレピ','ドラム','パーカッション']},
+  {g:'雰囲気',  t:['ポジティブ','ネガティブ','中毒性','キャッチー','実験的','ノスタルジー','悲しい','和風','人間味がある','ノイジー','レトロ','メロディアス','リズミカル','ミニマル','面白い','怖い','盛り上がる']},
+  {g:'ジャンル', t:['ポップス','EDM','ジャズ','ロック','ヒップホップ','シティポップ','クラシック','ボサノバ','ラテン','アンビエント']},
+  {g:'長さ',    t:['ショート尺(~2分)','ミディアム尺(2~5分)','ロング尺(5分~)']},
+  {g:'その他',  t:['ループ曲','コラボ','自作音源','楽譜','ロゴあり','イラスト','ドット絵','教育文字','モーショングラフィックス','文字PV','DAW画面','モールス','二進数','鍵盤','波紋','点字','格子','リトマス','ヒラギノ/源ノ角フォント','k8x12Sフォント','美咲フォント','ネタ','予告','解読','英語','中国語','イミラスライル語','すべあな編曲']},
+];
+const SHEET_CACHE_KEY  = 'ic_sheet_cache';
+const SHEET_CACHE_TTL  = 60 * 60 * 1000; // 1時間
+const STATIC_SONGS_URL = './songs.json';
+
+const PAGE = 24;
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let S = {
+  songs: [],        // {videoId,title,artist,url,date,year,views,category}
+  tags: {},         // {videoId: {mood,rhythm,melody,origin,votes,adv:[],advVotes:0}}
+  likes: {},        // {videoId: count}
+  liked: new Set(), // videoIds this user has liked
+  ytMeta: {},       // {videoId: {views,duration,channelIcon,title,channelName}}
+  apiKey: '',
+  categories: [],   // unique categories from sheet
+  activeCategory: 'all',
+  activeSort: 'random',
+  pool: [],         // current sorted/filtered pool for main grid
+  poolShown: 0,
+  filterPool: [],
+  filterShown: 0,
+  filters: Object.fromEntries(TAG_DIMS.map(d=>[d.key,[0,20]])),
+  sessionVoted: new Set(),
+  advFilterSel: [],
+  useAdvInSim: false,
+  searchQ: '',
+  openTagPanel: null, // videoId of open tag panel
+  currentAdvId: null,
+  pendingTagValues: {},
+  randomHistory: [], // used videoIds in current random session
+  currentPlayerVid: null,
+  currentUserId: '',
+};
+
+// ══════════════════════════════════════════
+//  PERSISTENCE
+// ══════════════════════════════════════════
+function persist() {}
+function load() {
+  S.tags={};
+  S.likes={};
+  S.liked=new Set();
+  S.apiKey = localStorage.getItem('ic_apikey')||'';
+  
+  
+}
+function saveApiKey() {
+  S.apiKey = document.getElementById('ytApiInput').value.trim();
+  localStorage.setItem('ic_apikey', S.apiKey);
+  
+  toggleApiPanel();
+  showToast(S.apiKey ? 'APIキーを保存しました' : 'APIキーをクリアしました');
+  if (S.songs.length && S.apiKey) fetchYTMeta(S.songs.map(s=>s.videoId));
+}
+function toggleApiPanel() {
+  // apiPanel removed
+}
+document.addEventListener('click', e => {
+  // apiPanel removed
+});
+
+// ══════════════════════════════════════════
+//  CSV PARSING
+// ══════════════════════════════════════════
+function parseCSV(txt) {
+  const rows=[]; let row=[],field='',inQ=false;
+  for (let i=0;i<txt.length;i++) {
+    const c=txt[i],n=txt[i+1];
+    if (inQ) {
+      if (c==='"'&&n==='"'){field+='"';i++;}
+      else if(c==='"'){inQ=false;}
+      else{field+=c;}
+    } else {
+      if(c==='"'){inQ=true;}
+      else if(c===','){row.push(field);field='';}
+      else if(c==='\n'||(c==='\r'&&n==='\n')){
+        if(c==='\r')i++;
+        row.push(field);field='';
+        if(row.some(f=>f.trim()))rows.push(row);
+        row=[];
+      } else {field+=c;}
+    }
+  }
+  if(row.length){row.push(field);if(row.some(f=>f.trim()))rows.push(row);}
+  return rows;
+}
+
+function detectCols(hdr) {
+  const h=hdr.map(x=>(x||'').toLowerCase().replace(/[\s　]/g,''));
+  const f=(...pats)=>h.findIndex(x=>pats.some(p=>p.test(x)));
+  return {
+    title:  f(/タイトル|曲名|title|song|name/),
+    artist: f(/投稿者|作者|artist|author|channel|チャンネル|creator/),
+    url:    f(/url|link|youtu|リンク|動画|video/),
+    date:   f(/投稿日|日付|date|日|月|year|年/),
+    views:  f(/再生|views?|view_count|回数/),
+    cat:    f(/カテゴリ|category|genre|ジャンル|種類|type|分類/),
+  };
+}
+
+function extractVid(url) {
+  if (!url) return null;
+  const m = String(url).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+const thumbUrl = id => `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
+const ytUrl = id => `https://www.youtube.com/watch?v=${id}`;
+const escH = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function normalizeExternalUrl(url){
+  const raw=String(url||'').trim();
+  if(!raw)return'';
+  const withProtocol=/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)?raw:`https://${raw.replace(/^\/+/,'')}`;
+  try { return new URL(withProtocol).href; } catch(e){ return ''; }
+}
+function openExternalLink(url){
+  const href=normalizeExternalUrl(url);
+  if(!href){showToast('リンクが無効です');return;}
+  window.open(href,'_blank','noopener');
+}
+async function apiFetch(path, options={}) {
+  const res=await fetch(path,{
+    method: options.method||'GET',
+    headers:{'Content-Type':'application/json',...(options.headers||{})},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const data=await res.json().catch(()=>({ok:false,error:'invalid json'}));
+  if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
+  return data;
+}
+function applySongState(videoId, tag, likeCount, liked){
+  if(videoId&&tag) S.tags[videoId]=tag;
+  if(videoId&&typeof likeCount==='number') S.likes[videoId]=likeCount;
+  if(videoId&&typeof liked==='boolean'){
+    if(liked) S.liked.add(videoId);
+    else S.liked.delete(videoId);
+  }
+}
+async function loadSharedState(){
+  if(!S.currentUserId)return;
+  const data=await apiFetch(`/api/bootstrap?userId=${encodeURIComponent(S.currentUserId)}`);
+  S.tags=data.tags||{};
+  S.likes=data.likes||{};
+  S.liked=new Set(data.liked||[]);
+}
+async function fetchServerSongs(){
+  const data=await apiFetch('/api/songs');
+  const rows=Array.isArray(data?.songs)?data.songs:[];
+  if(!rows.length) throw new Error('server songs cache is empty');
+  return finalizeSongs(rows.map(normalizeSongRecord).filter(Boolean));
+}
+
+// ══════════════════════════════════════════
+//  DATA FETCHING
+// ══════════════════════════════════════════
+async function fetchText(url) {
+  // direct
+  try {
+    const r=await fetch(url,{signal:AbortSignal.timeout(7000)});
+    if(r.ok){const t=await r.text();if(t.length>20)return t;}
+  } catch(e){}
+  // proxies
+  for(const p of PROXIES){
+    try {
+      const r=await fetch(p(url),{signal:AbortSignal.timeout(10000)});
+      if(r.ok){const t=await r.text();if(t.length>20)return t;}
+    } catch(e){}
+  }
+  throw new Error('取得失敗');
+}
+
+function finalizeSongs(all) {
+  all.forEach(s=>{ s._dn=normDate(s.date,s.year); });
+  all.sort((a,b)=>a.year-b.year||(a._dn>b._dn?1:a._dn<b._dn?-1:0));
+  return all;
+}
+
+function normalizeSongRecord(raw) {
+  if(!raw||typeof raw!=='object')return null;
+  const videoId = String(raw.videoId||extractVid(raw.url)||'').trim();
+  if(!videoId)return null;
+  const yearNum = Number(raw.year);
+  return {
+    videoId,
+    title: String(raw.title||'').trim(),
+    artist: String(raw.artist||'').trim(),
+    badge: String(raw.badge||'').trim(),
+    url: ytUrl(videoId),
+    date: String(raw.date||'').trim(),
+    year: Number.isFinite(yearNum)&&yearNum>0 ? yearNum : new Date().getFullYear(),
+    category: String(raw.category||'').trim(),
+    lyrics: String(raw.lyrics||'').trim(),
+  };
+}
+
+async function fetchBundledSongs() {
+  const r=await fetch(STATIC_SONGS_URL,{cache:'force-cache',signal:AbortSignal.timeout(7000)});
+  if(!r.ok)throw new Error(`songs.json fetch failed: ${r.status}`);
+  const data=await r.json();
+  const rows=Array.isArray(data)?data:(Array.isArray(data?.songs)?data.songs:[]);
+  const songs=rows.map(normalizeSongRecord).filter(Boolean);
+  if(!songs.length)throw new Error('songs.json is empty');
+  return finalizeSongs(songs);
+}
+
+function parseSheet(txt, year, seen) {
+  const rows=parseCSV(txt);
+  if(rows.length<2)return[];
+  // 年表の列（固定）:
+  // A(0)=日付  C(2)=タイトル  D(3)=作者  E(4)=バッジ  F(5)=カテゴリ  N(13)=歌詞URL
+  const C_DATE  = 0;
+  const C_TITLE = 2;
+  const C_ARTST = 3;
+  const C_BADGE = 4;
+  const C_CAT   = 5;
+  const C_LYR   = 13;
+
+  const songs=[];
+  let lastDate=''; // 空白セルは直前の日付を継承
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];
+    if(!r||r.every(f=>!f.trim()))continue;
+
+    // 日付継承
+    const rawDate=(r[C_DATE]||'').trim();
+    if(rawDate) lastDate=rawDate;
+    const date=lastDate;
+
+    // 全セルからYouTube IDを探す（ニコ動行でJ列にYTがあるケース対応）
+    let vid=null;
+    for(let ci=0;ci<r.length;ci++){
+      const m=String(r[ci]||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+      if(m){vid=m[1];break;}
+    }
+    if(!vid||seen.has(vid))continue;
+    seen.add(vid);
+
+    songs.push({
+      videoId: vid,
+      title:   (r[C_TITLE]||'').trim(),
+      artist:  (r[C_ARTST]||'').trim(),
+      badge:   (r[C_BADGE]||'').trim(),
+      url:     ytUrl(vid),
+      date,
+      year,
+      category:(r[C_CAT]||'').trim(),
+      lyrics:  (r[C_LYR ]||'').trim(),
+    });
+  }
+  return songs;
+}
+
+// 日付を YYYY/MM/DD に正規化
+function normDate(d, year){
+  if(!d) return '';
+  // すでに4桁年を含む
+  if(/[0-9]{4}/.test(d)){
+    return d.replace(/[年月]/g,'/').replace(/[日]/g,'').replace(/\/$/,'').trim();
+  }
+  // M/D や M月D日 → YYYY/MM/DD
+  const m = d.replace(/[年月]/g,'/').replace(/[日]/g,'').trim().match(/(\d+)[\/](\d+)/);
+  if(m){
+    return `${year}/${String(m[1]).padStart(2,'0')}/${String(m[2]).padStart(2,'0')}`;
+  }
+  return d;
+}
+
+async function fetchAllSheets() {
+  // 1. Cloudflare側のサーバーキャッシュを最優先で使う
+  try{
+    const serverSongs = await fetchServerSongs();
+    document.getElementById('totalBadge').textContent=`${serverSongs.length}曲`;
+    saveSongsCache(serverSongs);
+    return serverSongs;
+  }catch(e){}
+
+  // 2. 静的JSONがあれば使う（ローカル確認用）
+  try{
+    const bundled = await fetchBundledSongs();
+    document.getElementById('totalBadge').textContent=`${bundled.length}曲`;
+    saveSongsCache(bundled);
+    return bundled;
+  }catch(e){}
+
+  // 3. ローカルキャッシュがあれば即時表示
+  const cached = loadSongsCache();
+  if(cached && cached.length){
+    document.getElementById('totalBadge').textContent=`${cached.length}曲 (キャッシュ)`;
+    // バックグラウンドで最新データ取得
+    setTimeout(()=>fetchAllSheetsBackground(), 500);
+    return cached;
+  }
+
+  // 4. 最後の手段としてシートを直接取得
+  return fetchAllSheetsNetwork(true);
+}
+
+async function fetchAllSheetsBackground(){
+  try{
+    let songs = [];
+    try{
+      songs = await fetchServerSongs();
+    }catch(e){
+      try{
+        songs = await fetchBundledSongs();
+      }catch(e2){
+        songs = await fetchAllSheetsNetwork(false);
+      }
+    }
+    if(songs.length){
+      // キャッシュ更新のみ。表示の更新はシャッフルボタンで行う
+      saveSongsCache(songs);
+      S.songs = songs;
+      const b=document.getElementById('totalBadge');
+      if(b) b.textContent=`${songs.length}曲`;
+    }
+  }catch(e){}
+}
+
+async function fetchAllSheetsNetwork(showProgress) {
+  if(showProgress) setLoading(true,0,SHEET_YEARS.length);
+  const all=[],seen=new Set();
+  let ok=0,fail=0;
+
+  const BATCH=3;
+  for(let b=0;b<SHEET_YEARS.length;b+=BATCH){
+    const slice=SHEET_YEARS.slice(b,b+BATCH);
+    const res=await Promise.allSettled(
+      slice.map(async({year,gid})=>{const txt=await fetchText(csvUrl(gid));return{year,txt};})
+    );
+    res.forEach((r,i)=>{
+      if(r.status==='fulfilled'){
+        all.push(...parseSheet(r.value.txt,r.value.year,seen));
+        ok++;
+      } else { fail++; }
+    });
+    if(showProgress) setLoading(true,b+BATCH,SHEET_YEARS.length);
+    if(b+BATCH<SHEET_YEARS.length)await sleep(200);
+  }
+
+  if(showProgress) setLoading(false);
+  if(!all.length){
+    if(showProgress) showErr(`<strong>楽曲を取得できませんでした</strong><br>スプレッドシートを「リンクを知っている全員が閲覧可能」に設定してください。`);
+    return[];
+  }
+  if(fail>0 && showProgress) showWarn(`${ok}/${SHEET_YEARS.length}シート取得成功（${fail}シートは失敗）`);
+  else if(showProgress) hideErr();
+
+  finalizeSongs(all);
+  if(showProgress) saveSongsCache(all);
+  return all;
+}
+
+async function fetchYTMeta(vids) {
+  if(!S.apiKey||!vids.length)return;
+  for(let i=0;i<vids.length;i+=50){
+    const batch=vids.slice(i,i+50).join(',');
+    try{
+      const r=await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${batch}&part=snippet,statistics,contentDetails&key=${S.apiKey}`);
+      const d=await r.json();
+      if(d.error){console.warn('YT API:',d.error.message);break;}
+      for(const item of(d.items||[])){
+        S.ytMeta[item.id]={
+          views:    parseInt(item.statistics?.viewCount||0),
+          duration: parseDur(item.contentDetails?.duration||''),
+          channelIcon: item.snippet?.thumbnails?.default?.url||'',
+          title:    item.snippet?.title||'',
+          channelName:item.snippet?.channelTitle||'',
+          channelId:  item.snippet?.channelId||'',
+        };
+      }
+    }catch(e){break;}
+  }
+  rerender();
+}
+
+function parseDur(iso) {
+  const m=iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if(!m)return'';
+  const h=+m[1]||0,mn=+m[2]||0,s=+m[3]||0;
+  return h?`${h}:${pad(mn)}:${pad(s)}`:`${mn}:${pad(s)}`;
+}
+function pad(n){return String(n).padStart(2,'0');}
+
+function fmtViews(n) {
+  if(!n)return'';
+  if(n>=10000)return`${(n/10000).toFixed(1)}万回`;
+  if(n>=1000)return`${(n/1000).toFixed(1)}千回`;
+  return`${n}回`;
+}
+
+function fmtDate(s, year) {
+  return normDate(s, year||2018);
+}
+
+function hashColor(str) {
+  let h=0;
+  for(let i=0;i<str.length;i++){h=str.charCodeAt(i)+((h<<5)-h);}
+  const colors=['#e53e3e','#dd6b20','#d69e2e','#38a169','#3182ce','#805ad5','#d53f8c','#00b5d8'];
+  return colors[Math.abs(h)%colors.length];
+}
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+// ══════════════════════════════════════════
+//  CATEGORIES
+// ══════════════════════════════════════════
+const CATEGORY_ORDER = ['曲','アレンジ','メドレー','カバー','解読','その他','DSC','オフボ','ネタ','予告','企画','出来事','総集編','逆再生枠','音mad','不明'];
+
+function buildCategories() {
+  const cats=new Set();
+  S.songs.forEach(s=>{if(s.category)cats.add(s.category);});
+  // Sort by specified order, unknown categories go to end alphabetically
+  const known=CATEGORY_ORDER.filter(c=>cats.has(c));
+  const unknown=[...cats].filter(c=>!CATEGORY_ORDER.includes(c)).sort();
+  S.categories=[...known,...unknown];
+  const wrap=document.getElementById('chipsWrap');
+  const scroll=document.getElementById('chipsScroll');
+  if(!S.categories.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  scroll.innerHTML='';
+  const all=document.createElement('button');
+  all.className='chip active';
+  all.textContent='すべて';
+  all.onclick=()=>setCategory('all');
+  all.id='chip-all';
+  scroll.appendChild(all);
+  S.categories.forEach(c=>{
+    const btn=document.createElement('button');
+    btn.className='chip';
+    btn.textContent=c;
+    btn.id=`chip-${c}`;
+    btn.onclick=()=>setCategory(c);
+    scroll.appendChild(btn);
+  });
+}
+
+function setCategory(cat) {
+  S.activeCategory=cat;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  const el=document.getElementById(cat==='all'?'chip-all':`chip-${cat}`);
+  if(el)el.classList.add('active');
+  rebuildPool();
+  renderMain();
+  S.filterPool=computeFilterPool();
+  S.filterShown=PAGE;
+  renderFilter();
+}
+
+// ══════════════════════════════════════════
+//  SORT + POOL
+// ══════════════════════════════════════════
+function setSort(sort) {
+  S.activeSort=sort;
+  document.querySelectorAll('.sort-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.sort===sort);
+  });
+  document.getElementById('shuffleBtn').style.display=sort==='random'||sort==='untagged'?'':'none';
+  rebuildPool();
+  renderMain();
+}
+
+function doShuffle() { rebuildPool(); renderMain(); }
+
+function filteredBySearch(songs) {
+  const q=S.searchQ.toLowerCase();
+  const cat=S.activeCategory;
+  return songs.filter(s=>{
+    const matchCat=cat==='all'||s.category===cat;
+    const matchQ=!q||s.title.toLowerCase().includes(q)||s.artist.toLowerCase().includes(q);
+    return matchCat&&matchQ&&!s._private;
+  });
+}
+
+function rebuildPool() {
+  let base=filteredBySearch(S.songs);
+  switch(S.activeSort){
+    case'random': S.pool=shuffle([...base]); break;
+    case'new':    S.pool=[...base].sort((a,b)=>{
+      if(b.year!==a.year) return b.year-a.year;
+      const an=a._dn||normDate(a.date,a.year), bn=b._dn||normDate(b.date,b.year);
+      return bn>an?1:bn<an?-1:0;
+    }); break;
+    case'tagged':   S.pool=[...base].sort((a,b)=>(S.tags[b.videoId]?.votes||0)-(S.tags[a.videoId]?.votes||0)); break;
+    case'untagged': S.pool=[...base].filter(s=>!S.tags[s.videoId]); break;
+  }
+  S.poolShown=PAGE;
+}
+
+function computeFilterPool() {
+  return filteredBySearch(S.songs).filter(s=>{
+    const tag=S.tags[s.videoId];
+    if(!tag)return false;
+    return TAG_DIMS.every(d=>{
+      const v=tag[d.key]??10;
+      const[mn,mx]=S.filters[d.key];
+      return v>=mn&&v<=mx;
+    });
+  });
+}
+
+function shuffle(arr) {
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+  return arr;
+}
+
+// ══════════════════════════════════════════
+//  TAG LOGIC
+// ══════════════════════════════════════════
+function getTag(vid){return S.tags[vid]||null;}
+
+async function saveTag(vid, values) {
+  const data=await apiFetch('/api/tag',{
+    method:'POST',
+    body:{userId:S.currentUserId,videoId:vid,...values},
+  });
+  applySongState(vid,data.tag);
+  S.sessionVoted.add(vid);
+  return data.tag;
+}
+
+async function saveAdvTags(vid, selTags) {
+  const data=await apiFetch('/api/adv-tags',{
+    method:'POST',
+    body:{userId:S.currentUserId,videoId:vid,tags:selTags},
+  });
+  applySongState(vid,data.tag);
+  S.sessionVoted.add('adv_'+vid);
+  return data.tag;
+}
+function getAdvRate(vid,tag){const v=S.tags[vid]?.advVotes?.[tag];if(!v||!v.total)return 0;return Math.round(v.yes/v.total*100);}
+
+function tagDist(a,b){
+  const d=Math.sqrt(TAG_DIMS.reduce((s,d)=>{const diff=((a[d.key]??10)-(b[d.key]??10))/20;return s+diff*diff;},0));
+  if(!S.useAdvInSim)return d;
+  const aa=new Set(a.adv||[]),ba=new Set(b.adv||[]),u=new Set([...aa,...ba]);
+  const jac=u.size>0?1-([...aa].filter(x=>ba.has(x)).length/u.size):0;
+  return d+jac*0.5;
+}
+
+function findSimilar(vid,n=12){
+  const src=getTag(vid);
+  if(!src)return[];
+  return S.songs
+    .filter(s=>s.videoId!==vid&&getTag(s.videoId)&&!s._private)
+    .map(s=>({song:s,dist:tagDist(src,getTag(s.videoId))}))
+    .sort((a,b)=>a.dist-b.dist)
+    .slice(0,n);
+}
+
+// ══════════════════════════════════════════
+//  RENDER CARD
+// ══════════════════════════════════════════
+function makeCard(song) {
+  const tag=getTag(song.videoId);
+  const meta=S.ytMeta[song.videoId]||{};
+  const title=meta.title||(song.title&&song.title.trim()!==''?song.title:'(タイトル不明)');
+  const artist=meta.channelName||song.artist||'';
+  const views=fmtViews(meta.views||song.views||0);
+  const dur=meta.duration||'';
+  const icon=meta.channelIcon||'';
+  const date=fmtDate(song.date, song.year);
+  const thumbSrc=thumbUrl(song.videoId);
+  const bg=hashColor(artist||song.videoId);
+  const initial=(artist||'?')[0];
+
+  const card=document.createElement('div');
+  card.className='song-card';
+  card.dataset.vid=song.videoId;
+
+  // ── THUMBNAIL ──
+  const thumbArea=document.createElement('div');
+  thumbArea.className='card-thumb-area';
+
+  const img=document.createElement('img');
+  img.className='card-thumb loading';
+  img.alt=title;
+  img.loading='lazy';
+  img.onload=function(){
+    this.classList.remove('loading');
+    // Private video detection: placeholder is 120×90
+    if(this.naturalWidth>0&&this.naturalWidth<=120){
+      card.dataset.hidden='1';
+      const s=S.songs.find(x=>x.videoId===song.videoId);
+      if(s)s._private=true;
+    }
+  };
+  img.onerror=function(){
+    card.dataset.hidden='1';
+    const s=S.songs.find(x=>x.videoId===song.videoId);
+    if(s)s._private=true;
+  };
+  img.src=thumbSrc;
+
+  // duration badge
+  const durEl=document.createElement('div');
+  durEl.className='card-dur';
+  durEl.textContent=dur;
+  durEl.style.display=dur?'':'none';
+
+  // hover bar
+  const hoverBar=document.createElement('div');
+  hoverBar.className='card-hover-bar';
+  hoverBar.innerHTML=`
+
+  `;
+
+  // hover sliders
+  const hoverSliders=document.createElement('div');
+  hoverSliders.className='card-hover-sliders';
+  hoverSliders.id=`hs-${song.videoId}`;
+  hoverSliders.innerHTML=`
+${TAG_DIMS.map(d=>`
+      <div class="chs-row">
+        <span class="chs-lbl" style="color:${d.color}">${escH(d.label)}</span>
+        <input type="range" class="chs-slider" min="0" max="20" value="${tag?(tag[d.key]??10):10}"
+          style="--accent-color:${d.color}"
+          data-vid="${song.videoId}" data-dim="${d.key}"
+          oninput="onHoverSlider(this)" onclick="event.stopPropagation()">
+        <span class="chs-val" id="hsv-${song.videoId}-${d.key}">${tag?(tag[d.key]??10):10}</span>
+      </div>`).join('')}
+    <button class="chs-save-btn" onclick="event.stopPropagation();saveHoverTag('${song.videoId}')">保存する</button>
+  `;
+
+  // mini bars (passive)
+  const miniBars=document.createElement('div');
+  miniBars.className='card-minibars';
+  miniBars.id=`mb-${song.videoId}`;
+
+  // inline tag panel
+  const tagPanel=document.createElement('div');
+  tagPanel.className='card-tag-panel';
+  tagPanel.id=`tp-${song.videoId}`;
+
+  thumbArea.append(img,durEl,hoverBar,hoverSliders,miniBars,tagPanel);
+
+  // ── INFO ──
+  const badge  = song.badge||'';   // E列バッジ
+  const lyrics = song.lyrics||'';  // N列歌詞URL
+
+  const info=document.createElement('div');
+  info.className='card-info';
+
+  // card-meta（position:relative でドロップダウンの基準）
+  const meta2=document.createElement('div');
+  meta2.className='card-meta';
+
+  // タイトル行: タイトルリンク + 3点リーダー
+  const titleRow=document.createElement('div');
+  titleRow.style.cssText='display:flex;align-items:flex-start;gap:2px;';
+
+  const titleDiv=document.createElement('div');
+  titleDiv.className='card-title';
+  titleDiv.style.flex='1';
+  const titleA=document.createElement('a');
+  titleA.href=ytUrl(song.videoId);
+  titleA.target='_blank';
+  titleA.style.cssText='color:inherit;text-decoration:none;';
+  titleA.textContent=title||'(読込中...)';
+  titleA.onmouseover=function(){this.style.textDecoration='underline';};
+  titleA.onmouseout=function(){this.style.textDecoration='none';};
+  titleA.onclick=e=>e.stopPropagation();
+  titleDiv.appendChild(titleA);
+
+  // 3点リーダーボタン（タイトル右端）
+  const dotBtn=document.createElement('button');
+  dotBtn.className='card-dot-btn';
+  dotBtn.textContent='⋯';
+  dotBtn.title='メニュー';
+  dotBtn.onclick=e=>{e.stopPropagation();toggleCardMenu(song.videoId);};
+
+  // ドロップダウン（card-meta内: position:absolute で card-meta 基準）
+  const dropdown=document.createElement('div');
+  dropdown.className='card-dropdown';
+  dropdown.id=`dd-${song.videoId}`;
+
+  const appendDropdownItem=(label,handler,opt={})=>{
+    const item=document.createElement('div');
+    item.className=`card-dd-item${opt.danger?' danger':''}`;
+    item.textContent=label;
+    item.onclick=e=>{
+      e.stopPropagation();
+      handler();
+      closeAllMenus();
+    };
+    dropdown.appendChild(item);
+  };
+  const appendDropdownSep=()=>{
+    const sep=document.createElement('div');
+    sep.className='card-dd-sep';
+    dropdown.appendChild(sep);
+  };
+
+  appendDropdownItem('▶ YouTubeで開く',()=>openExternalLink(ytUrl(song.videoId)));
+  appendDropdownItem('タグを編集',()=>openTagEditModal(song.videoId));
+  appendDropdownItem('似た曲を検索',()=>openSim(song.videoId));
+  if(lyrics){
+    appendDropdownSep();
+    appendDropdownItem('📖 すべ歌詞を開く',()=>openExternalLink(lyrics));
+  }
+  appendDropdownSep();
+  appendDropdownItem('報告',()=>openReportModal(song.videoId),{danger:true});
+
+  titleRow.append(titleDiv, dotBtn);
+  meta2.appendChild(titleRow);
+
+  // アーティスト・統計
+  const artistDiv=document.createElement('div');
+  artistDiv.className='card-artist';
+  artistDiv.innerHTML = artist + (badge ? ` <span style="font-size:14px;">${badge}</span>` : '');
+  meta2.appendChild(artistDiv);
+
+  const statsDiv=document.createElement('div');
+  statsDiv.className='card-stats';
+  statsDiv.innerHTML=(date?`<span>${escH(date)}</span>`:'')+
+    (song.category?`<span class="card-cat-tag">${escH(song.category)}</span>`:'');
+  meta2.appendChild(statsDiv);
+
+  // ドロップダウンは meta2 の中に入れる（position:absolute の基準）
+  meta2.appendChild(dropdown);
+
+  info.appendChild(meta2);
+  card.append(thumbArea,info);
+
+  // ボタン行
+  const tagBtnRow=document.createElement('div');
+  tagBtnRow.style.cssText='padding:0 8px 8px;display:flex;gap:4px;';
+  const tBtn=document.createElement('button');
+  tBtn.className='chb-btn tg';
+  tBtn.style.cssText='background:var(--s1);border:1px solid var(--br);color:var(--tx2);padding:4px 10px;border-radius:10px;font-size:11px;flex:1;justify-content:center;transition:all .18s;';
+  tBtn.textContent=tag?`タグ編集 (${tag.votes}件)`:'タグを編集';
+  tBtn.id=`tbtn-${song.videoId}`;
+  tBtn.onclick=()=>openTagEditModal(song.videoId);
+  const likeCount=S.likes?.[song.videoId]||0;
+  const hasLiked=S.liked?.has(song.videoId);
+  const likeBtn=document.createElement('button');
+  likeBtn.className='like-btn'+(hasLiked?' liked':'');
+  likeBtn.id=`like-${song.videoId}`;
+  likeBtn.innerHTML=`${hasLiked?'♥':'♡'} <span>${likeCount||''}</span>`;
+  likeBtn.onclick=()=>toggleLike(song.videoId);
+  const simBtn=document.createElement('button');
+  simBtn.style.cssText='background:var(--s1);border:1px solid var(--br);color:var(--tx2);padding:4px 8px;border-radius:10px;font-size:11px;transition:all .18s;flex-shrink:0;';
+  simBtn.textContent='似た曲';
+  simBtn.onclick=()=>openSim(song.videoId);
+  tagBtnRow.append(tBtn,simBtn,likeBtn);
+  card.appendChild(tagBtnRow);
+
+  // populate mini bars & tag panel
+  updateCardTag(song.videoId,tag);
+
+  return card;
+}
+
+function updateCardTag(vid, tag) {
+  const mb=document.getElementById(`mb-${vid}`);
+  const tp=document.getElementById(`tp-${vid}`);
+  if(!mb||!tp)return;
+
+  if(tag){
+    mb.innerHTML=TAG_DIMS.map(d=>`
+      <div class="cmb-row">
+        <span class="cmb-lbl">${escH(d.label)}</span>
+        <div class="cmb-track"><div class="cmb-fill" style="width:${((tag[d.key]??10)/20*100).toFixed(0)}%;background:${d.color};"></div></div>
+        <span class="cmb-val">${tag[d.key]??5}</span>
+      </div>`).join('');
+  } else {
+    mb.innerHTML='<div class="untagged-bd">untagged</div>';
+  }
+
+  // build tag panel sliders
+  const initVals={};
+  TAG_DIMS.forEach(d=>{initVals[d.key]=tag?(tag[d.key]??10):10;});
+
+  tp.innerHTML=`
+    <div class="ctp-head">
+      
+      <button class="ctp-close" onclick="closeTagPanel('${vid}')">✕</button>
+    </div>
+    ${TAG_DIMS.map(d=>`
+      <div class="ctp-row">
+        <span class="ctp-label" style="color:${d.color}">${escH(d.label)}</span>
+        <input type="range" class="ctp-slider" min="0" max="10" value="${initVals[d.key]}"
+          style="--accent-color:${d.color}"
+          data-vid="${vid}" data-dim="${d.key}"
+          oninput="onTagSlider(this)">
+        <span class="ctp-val" id="tv-${vid}-${d.key}">${initVals[d.key]}</span>
+      </div>
+      <div class="ctp-subrow"><span>${escH(d.left)}</span><span>${escH(d.right)}</span></div>
+    `).join('')}
+    <div class="ctp-actions">
+      <button class="ctp-save" onclick="saveCardTag('${vid}')">保存</button>
+      <button class="ctp-adv" onclick="openAdvModal('${vid}')">高度なタグ…</button>
+    </div>
+  `;
+
+  // store init values in pending
+  if(!S.pendingTagValues[vid])S.pendingTagValues[vid]={...initVals};
+}
+
+function onTagSlider(input) {
+  const {vid,dim}=input.dataset;
+  const v=parseInt(input.value);
+  document.getElementById(`tv-${vid}-${dim}`).textContent=v;
+  if(!S.pendingTagValues[vid])S.pendingTagValues[vid]={};
+  S.pendingTagValues[vid][dim]=v;
+  // live preview the mini bar
+  const fill=document.querySelector(`#mb-${vid} .cmb-fill:nth-child(${TAG_DIMS.findIndex(d=>d.key===dim)+1})`);
+  if(fill){fill.style.width=(v*10)+'%';}
+  const val=document.querySelector(`#mb-${vid} .cmb-val:nth-child(${TAG_DIMS.findIndex(d=>d.key===dim)+1})`);
+  if(val)val.textContent=v;
+}
+
+function toggleTagPanel(vid) {
+  const tp=document.getElementById(`tp-${vid}`);
+  if(!tp)return;
+  const isOpen=tp.classList.contains('open');
+  // close any other open panel
+  if(S.openTagPanel&&S.openTagPanel!==vid){
+    const other=document.getElementById(`tp-${S.openTagPanel}`);
+    if(other)other.classList.remove('open');
+  }
+  if(isOpen){
+    tp.classList.remove('open');
+    S.openTagPanel=null;
+  } else {
+    tp.classList.add('open');
+    S.openTagPanel=vid;
+    // init pending values
+    const tag=getTag(vid);
+    S.pendingTagValues[vid]={};
+    TAG_DIMS.forEach(d=>{S.pendingTagValues[vid][d.key]=tag?(tag[d.key]??10):10;});
+  }
+}
+
+function closeTagPanel(vid) {
+  const tp=document.getElementById(`tp-${vid}`);
+  if(tp)tp.classList.remove('open');
+  if(S.openTagPanel===vid)S.openTagPanel=null;
+}
+
+async function saveCardTag(vid) {
+  const vals=S.pendingTagValues[vid];
+  if(!vals){showToast('値が設定されていません');return;}
+  // ensure all dims present
+  const complete={};
+  TAG_DIMS.forEach(d=>{complete[d.key]=vals[d.key]??10;});
+  try{
+    await saveTag(vid,complete);
+  }catch(e){showToast('タグ保存に失敗しました');return;}
+  closeTagPanel(vid);
+  updateCardTag(vid,getTag(vid));
+  // update tag button
+  const card=document.querySelector(`.song-card[data-vid="${vid}"]`);
+  if(card){
+    const btn=card.querySelector('.chb-btn.tg');
+    const tag=getTag(vid);
+    if(btn&&tag)btn.textContent=`🏷 タグ編集 (${tag.votes}票)`;
+  }
+  showToast('タグを保存しました！');
+  // refresh filter pool
+  S.filterPool=computeFilterPool();
+  S.filterShown=PAGE;
+  renderFilter();
+}
+
+// ══════════════════════════════════════════
+//  RENDER GRIDS
+// ══════════════════════════════════════════
+function makeSkel() {
+  const d=document.createElement('div');
+  d.className='sk-card';
+  d.innerHTML=`
+    <div class="sk sk-thumb"></div>
+    <div class="sk-info">
+      <div class="sk sk-av"></div>
+      <div class="sk-lines"><div class="sk sk-t1"></div><div class="sk sk-t2"></div></div>
+    </div>`;
+  return d;
+}
+
+function renderMain() {
+  const grid=document.getElementById('mainGrid');
+  grid.innerHTML='';
+  const slice=S.pool.slice(0,S.poolShown);
+  if(!slice.length){
+    grid.innerHTML=`<div class="empty"><div class="empty-ic">🎵</div><div class="empty-t">楽曲が見つかりません</div><div class="empty-d">スプレッドシートの設定を確認してください</div></div>`;
+  } else {
+    slice.forEach(s=>grid.appendChild(makeCard(s)));
+  }
+  document.getElementById('mainMore').style.display=S.poolShown<S.pool.length?'block':'none';
+  document.getElementById('totalBadge').textContent=`${S.pool.length}曲`;
+}
+
+function renderFilter() {
+  const grid=document.getElementById('filterGrid2');
+  grid.innerHTML='';
+  const badge=document.getElementById('filterBadge');
+  badge.textContent=`${S.filterPool.length}曲マッチ`;
+  badge.className='cnt-badge'+(S.filterPool.length?' hi':'');
+  const slice=S.filterPool.slice(0,S.filterShown);
+  if(!slice.length){
+    const isDefault=TAG_DIMS.every(d=>S.filters[d.key][0]===0&&S.filters[d.key][1]===10);
+    grid.innerHTML=`<div class="empty"><div class="empty-ic">${isDefault?'🏷':'🔍'}</div>
+      <div class="empty-t">${isDefault?'タグ未登録':'マッチする楽曲なし'}</div>
+      <div class="empty-d">${isDefault?'カードの「🏷 タグを登録」からタグを登録すると表示されます':'スライダーの範囲を広げてみてください'}</div></div>`;
+  } else {
+    slice.forEach(s=>grid.appendChild(makeCard(s)));
+  }
+  document.getElementById('filterMore').style.display=S.filterShown<S.filterPool.length?'block':'none';
+}
+
+function rerender() { renderMain(); S.filterPool=computeFilterPool(); renderFilter(); }
+
+function showMoreMain(){ S.poolShown=Math.min(S.poolShown+PAGE,S.pool.length); renderMain(); }
+function showMoreFilter(){ S.filterShown=Math.min(S.filterShown+PAGE,S.filterPool.length); renderFilter(); }
+
+// ══════════════════════════════════════════
+//  FILTER SLIDERS
+// ══════════════════════════════════════════
+function buildFilterSliders() {
+  const grid=document.getElementById('filterGrid');
+  grid.innerHTML='';
+  TAG_DIMS.forEach(d=>{
+    const wrap=document.createElement('div');
+    wrap.className='fi-wrap';
+    wrap.innerHTML=`
+      <div class="fi-head">
+        <span class="fi-label" style="color:${d.color}">${escH(d.label)}</span>
+        <span class="fi-vals" id="fv-${d.key}">0 〜 20</span>
+      </div>
+      <div class="dual-range" style="--thumb-color:${d.color}">
+        <div class="dr-track"><div class="dr-fill" id="df-${d.key}" style="background:${d.color};left:0;width:100%;"></div></div>
+        <input type="range" class="dr-lo" min="0" max="20" value="0" data-dim="${d.key}" style="--thumb-color:${d.color}">
+        <input type="range" class="dr-hi" min="0" max="20" value="20" data-dim="${d.key}" style="--thumb-color:${d.color}">
+      </div>
+      <div class="fi-sublabels"><span>${escH(d.left)}</span><span>${escH(d.right)}</span></div>
+    `;
+    grid.appendChild(wrap);
+    const lo=wrap.querySelector('.dr-lo'),hi=wrap.querySelector('.dr-hi');
+    const update=function(){
+      let mn=+lo.value,mx=+hi.value;
+      if(mn>mx){if(this===lo)lo.value=mx,mn=mx;else hi.value=mn,mx=mn;}
+      S.filters[d.key]=[mn,mx];
+      document.getElementById(`df-${d.key}`).style.left=(mn/20*100)+'%';
+      document.getElementById(`df-${d.key}`).style.width=((mx-mn)/20*100)+'%';
+      document.getElementById(`fv-${d.key}`).textContent=mn===mx?mn:`${mn} 〜 ${mx}`;
+      S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
+    };
+    lo.addEventListener('input',update);hi.addEventListener('input',update);
+  });
+}
+
+function resetFilters() {
+  TAG_DIMS.forEach(d=>{
+    S.filters[d.key]=[0,20];
+    const lo=document.querySelector(`.dr-lo[data-dim="${d.key}"]`);
+    const hi=document.querySelector(`.dr-hi[data-dim="${d.key}"]`);
+    if(lo)lo.value=0;if(hi)hi.value=20;
+    const fill=document.getElementById(`df-${d.key}`);
+    if(fill){fill.style.left='0';fill.style.width='100%';}
+    const vl=document.getElementById(`fv-${d.key}`);
+    if(vl)vl.textContent='0 〜 20';
+  });
+  S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
+}
+
+// ══════════════════════════════════════════
+//  SEARCH
+// ══════════════════════════════════════════
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input',function(){
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(()=>{
+    S.searchQ=this.value.trim();
+    rebuildPool();renderMain();
+    S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
+  },280);
+});
+
+// ══════════════════════════════════════════
+//  ADD SONG MODAL
+// ══════════════════════════════════════════
+let addFetchTimer;
+function openAddModal(){document.getElementById('addOverlay').classList.add('open');}
+function closeAddModal(){
+  document.getElementById('addOverlay').classList.remove('open');
+  document.getElementById('addUrl').value='';
+  document.getElementById('addFetched').style.display='none';
+  document.getElementById('addSubmitBtn').disabled=true;
+}
+
+document.getElementById('addUrl').addEventListener('input',function(){
+  clearTimeout(addFetchTimer);
+  const vid=extractVid(this.value.trim());
+  if(!vid){document.getElementById('addFetched').style.display='none';document.getElementById('addSubmitBtn').disabled=true;return;}
+  addFetchTimer=setTimeout(()=>fetchAddInfo(vid),600);
+});
+
+async function fetchAddInfo(vid) {
+  document.getElementById('addThumb').src=thumbUrl(vid);
+  document.getElementById('addTitle').textContent='取得中...';
+  document.getElementById('addArtist').textContent='';
+  document.getElementById('addFetched').style.display='flex';
+  try {
+    const r=await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${vid}`);
+    const d=await r.json();
+    if(d.error){document.getElementById('addTitle').textContent='(非公開または削除済み)';document.getElementById('addSubmitBtn').disabled=true;return;}
+    document.getElementById('addTitle').textContent=d.title||'';
+    document.getElementById('addArtist').textContent=d.author_name||'';
+    document.getElementById('addSubmitBtn').disabled=false;
+  } catch{
+    document.getElementById('addTitle').textContent='(情報取得失敗)';
+  }
+}
+
+async function submitAdd() {
+  const url=document.getElementById('addUrl').value.trim();
+  const vid=extractVid(url);
+  if(!vid){showToast('有効なYouTube URLを入力してください');return;}
+  if(S.songs.some(s=>s.videoId===vid)){showToast('この楽曲はすでに登録されています');closeAddModal();return;}
+  const title=document.getElementById('addTitle').textContent;
+  const artist=document.getElementById('addArtist').textContent;
+  const cat=document.getElementById('addCategory').value.trim();
+  const song={videoId:vid,title,artist,url:ytUrl(vid),date:'',year:new Date().getFullYear(),views:0,category:cat};
+  S.songs.push(song);
+  if(cat&&!S.categories.includes(cat)){S.categories.push(cat);buildCategories();}
+  closeAddModal();
+  rebuildPool();renderMain();
+  showToast(`「${title}」を追加しました！`);
+}
+
+// ══════════════════════════════════════════
+//  CACHE (スプシデータを1時間キャッシュ)
+// ══════════════════════════════════════════
+function saveSongsCache(songs){
+  try{localStorage.setItem(SHEET_CACHE_KEY,JSON.stringify({ts:Date.now(),songs}));}catch(e){}
+}
+function loadSongsCache(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SHEET_CACHE_KEY)||'null');
+    if(d&&Date.now()-d.ts<SHEET_CACHE_TTL)return d.songs;
+  }catch(e){}
+  return null;
+}
+
+// ══════════════════════════════════════════
+//  TAG EDIT MODAL
+// ══════════════════════════════════════════
+let currentTagEditVid=null, tagEditPending={};
+
+function openTagEditModal(vid){
+  currentTagEditVid=vid;
+  const song=S.songs.find(s=>s.videoId===vid)||{};
+  const tag=getTag(vid);
+  const meta=S.ytMeta[vid]||{};
+  const title=(song.title&&song.title.trim()?song.title:null)||meta.title||'(タイトル不明)';
+  const artist=meta.channelName||song.artist||'';
+  const isEdit=S.sessionVoted.has(vid);
+
+  document.getElementById('tagEditFrame').src=`https://www.youtube.com/embed/${vid}`;
+  document.getElementById('tagEditTitle').textContent=title;
+  document.getElementById('tagEditArtist').textContent=artist;
+  document.getElementById('tagEditSub').textContent=artist+(song.category?` • ${song.category}`:'');
+  document.getElementById('tagEditNote').textContent=
+    tag&&tag.votes ? `${tag.votes}件の保存データの平均値${isEdit?' (編集中)':''}` : '保存済みタグなし';
+
+  tagEditPending={};
+  TAG_DIMS.forEach(d=>{tagEditPending[d.key]=tag?(tag[d.key]??10):10;});
+
+  document.getElementById('tagEditSliders').innerHTML=TAG_DIMS.map(d=>`
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+        <span style="font-size:11px;font-weight:500;color:${d.color};width:46px;flex-shrink:0;">${escH(d.label)}</span>
+        <input type="range" min="0" max="20" value="${tagEditPending[d.key]}"
+          style="-webkit-appearance:none;flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.15);cursor:pointer;accent-color:${d.color};"
+          data-dim="${d.key}" oninput="onTagEditSlider(this)">
+        <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--ac2);width:22px;text-align:right;" id="tev-${d.key}">${tagEditPending[d.key]}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--tx3);padding:0 0 0 54px;">
+        <span>${escH(d.left)}</span><span>${escH(d.right)}</span>
+      </div>
+    </div>`).join('');
+
+  const side=document.getElementById('tagEditAdvSide');
+  const btn=document.getElementById('tagEditAdvBtn');
+  if(side){side.classList.remove('open');void side.offsetWidth;}
+  if(btn)btn.textContent='高度なタグ ▶';
+  document.getElementById('tagEditOverlay').classList.add('open');
+}
+
+function onTagEditSlider(input){
+  tagEditPending[input.dataset.dim]=parseInt(input.value);
+  const el=document.getElementById(`tev-${input.dataset.dim}`);
+  if(el)el.textContent=input.value;
+}
+
+function toggleTagEditAdvSide(){
+  const side=document.getElementById('tagEditAdvSide');
+  const btn=document.getElementById('tagEditAdvBtn');
+  if(side.classList.contains('open')){
+    side.classList.remove('open');
+    btn.textContent='高度なタグ ▶';
+  } else {
+    side.classList.add('open');
+    btn.textContent='高度なタグ ◀';
+    renderAdvChips('tagEditAdvBody',currentTagEditVid);
+  }
+}
+
+function renderAdvChips(bodyId,vid){
+  const tag=getTag(vid);
+  const sel=tag?.adv||[];
+  const body=document.getElementById(bodyId);
+  if(!body)return;
+  const isEdit=S.sessionVoted.has('adv_'+vid);
+  body.innerHTML='<div class="exp-side-head">高度なタグ'+(isEdit?' <span style="font-size:9px;color:var(--ac2);">(編集中)</span>':'')+'</div>'
+    +ADV_TAG_GROUPS.map(g=>`
+      <div class="adv-group">
+        <div class="adv-group-lbl">${escH(g.g)}</div>
+        <div class="adv-chips-wrap">
+          ${g.t.map(t=>{const r=getAdvRate(vid,t);return `<button class="adv-chip${sel.includes(t)?' sel':''}" onclick="this.classList.toggle('sel')">${escH(t)}${r>0?`<span style="font-size:8px;opacity:.6;margin-left:3px;">${r}%</span>`:''}</button>`;}).join('')}
+        </div>
+      </div>`).join('');
+}
+
+async function submitTagEdit(){
+  if(!currentTagEditVid)return;
+  const c={};TAG_DIMS.forEach(d=>{c[d.key]=tagEditPending[d.key]??10;});
+  try{
+    await saveTag(currentTagEditVid,c);
+  }catch(e){showToast('タグ保存に失敗しました');return;}
+  updateCardTag(currentTagEditVid,getTag(currentTagEditVid));
+  document.querySelectorAll(`[id="tbtn-${currentTagEditVid}"]`).forEach(b=>{
+    const t=getTag(currentTagEditVid);if(t)b.textContent=`🏷 タグ編集 (${t.votes}件)`;
+  });
+  showToast('タグを保存しました！');
+  S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
+}
+
+async function submitTagEditAdv(){
+  if(!currentTagEditVid)return;
+  const sel=[...document.querySelectorAll('#tagEditAdvBody .adv-chip.sel')].map(b=>b.textContent.replace(/\s*\d+%$/,''));
+  try{
+    await saveAdvTags(currentTagEditVid,sel);
+  }catch(e){showToast('高度なタグ保存に失敗しました');return;}
+  showToast('高度なタグを保存しました');
+  renderAdvChips('tagEditAdvBody',currentTagEditVid);
+}
+
+function closeTagEditModal(){
+  document.getElementById('tagEditOverlay').classList.remove('open');
+  const s=document.getElementById('tagEditAdvSide');if(s)s.classList.remove('open');
+  const f=document.getElementById('tagEditFrame');if(f)f.src='';
+  currentTagEditVid=null;tagEditPending={};
+}
+
+// ── 保存済みタグポップアップ ──
+function showSavedTagsPopup(vid){
+  if(!vid)return;
+  const tag=getTag(vid);const adv=tag?.adv||[];
+  const content=document.getElementById('stpContent');
+  content.innerHTML=!adv.length
+    ?'<p style="color:var(--tx3);font-size:12px;">保存済みの高度なタグはありません（選択率20%未満）</p>'
+    :ADV_TAG_GROUPS.map(g=>{
+      const ts=g.t.filter(t=>adv.includes(t));if(!ts.length)return'';
+      return `<div style="margin-bottom:10px;"><div style="font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:5px;">${escH(g.g)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${ts.map(t=>`<span style="font-size:11px;background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:2px 8px;color:var(--tx2);">${escH(t)}<span style="font-size:9px;opacity:.6;margin-left:3px;">${getAdvRate(vid,t)}%</span></span>`).join('')}</div></div>`;
+    }).join('');
+  document.getElementById('stpOverlay').classList.add('open');
+}
+function closeSavedTagsPopup(){document.getElementById('stpOverlay').classList.remove('open');}
+
+// ── プレイヤー高度なタグ ──
+function togglePlayerAdvSide(){
+  const side=document.getElementById('playerAdvSide');
+  const btn=document.getElementById('playerAdvBtn');
+  const box=document.getElementById('playerBox');
+  const open=side.classList.contains('open');
+  if(open){side.classList.remove('open');box.classList.remove('adv-open');btn.textContent='高度なタグ ▶';}
+  else{side.classList.add('open');box.classList.add('adv-open');btn.textContent='高度なタグ ◀';renderAdvChips('playerAdvBody',S.currentPlayerVid);}
+}
+async function submitPlayerAdvTags(){
+  if(!S.currentPlayerVid)return;
+  const sel=[...document.querySelectorAll('#playerAdvBody .adv-chip.sel')].map(b=>b.textContent.replace(/\s*\d+%$/,''));
+  try{
+    await saveAdvTags(S.currentPlayerVid,sel);
+  }catch(e){showToast('高度なタグ保存に失敗しました');return;}
+  showToast('高度なタグを保存しました');
+  renderAdvChips('playerAdvBody',S.currentPlayerVid);
+}
+async function saveAndNextSong(){
+  const ok=await submitPlayerVote();
+  if(!ok)return;
+  setTimeout(nextRandomSong,200);
+}
+
+// ── 3点リーダーメニュー ──
+function toggleCardMenu(vid){
+  closeAllMenus();
+  const dd=document.getElementById(`dd-${vid}`);
+  if(dd){dd.classList.add('open');document.addEventListener('click',closeAllMenusOnce,{once:true});}
+}
+function closeAllMenus(){document.querySelectorAll('.card-dropdown.open').forEach(d=>d.classList.remove('open'));}
+function closeAllMenusOnce(){closeAllMenus();}
+
+// ── 報告フォーム ──
+let reportVid=null;
+function openReportModal(vid){
+  reportVid=vid;
+  const song=S.songs.find(s=>s.videoId===vid)||{};
+  const meta=S.ytMeta[vid]||{};
+  document.getElementById('reportSub').textContent=(meta.title||song.title||vid);
+  document.getElementById('reportOverlay').classList.add('open');
+}
+function closeReportModal(){document.getElementById('reportOverlay').classList.remove('open');reportVid=null;}
+async function submitReport(){
+  const name=document.getElementById('reportName').value.trim();
+  const contact=document.getElementById('reportContact').value.trim();
+  const type=document.querySelector('input[name="reportType"]:checked')?.value||'other';
+  const comment=document.getElementById('reportComment').value.trim();
+  if(!name){showToast('名前を入力してください');return;}
+  try{
+    await apiFetch('/api/report',{
+      method:'POST',
+      body:{videoId:reportVid,name,contact,type,comment},
+    });
+  }catch(e){showToast('報告送信に失敗しました');return;}
+  closeReportModal();
+  showToast('報告を送信しました。ありがとうございます。');
+}
+
+// ── 高度な検索（フィルター） ──
+let advSearchOpen=false;
+function toggleAdvSearch(){
+  advSearchOpen=!advSearchOpen;
+  const area=document.getElementById('advSearchArea');
+  const btn=document.getElementById('advSearchToggle');
+  if(!area)return;
+  if(advSearchOpen){area.style.display='block';btn.textContent='高度な検索 ▲';renderAdvSearchUI();}
+  else{area.style.display='none';btn.textContent='高度な検索 ▼';S.advFilterSel=[];S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();}
+}
+function renderAdvSearchUI(){
+  const area=document.getElementById('advSearchArea');if(!area)return;
+  area.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:11px;font-weight:600;color:var(--tx2);">高度なタグで絞り込む</span>
+    <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--tx2);cursor:pointer;">
+      <input type="checkbox" id="useAdvInSimCb" ${S.useAdvInSim?'checked':''} onchange="S.useAdvInSim=this.checked">
+      類似楽曲に高度なタグを使用
+    </label>
+  </div>`
+  +ADV_TAG_GROUPS.map(g=>`
+    <div class="adv-group">
+      <div class="adv-group-lbl">${escH(g.g)}</div>
+      <div class="adv-chips-wrap">
+        ${g.t.map(t=>`<button class="adv-chip${S.advFilterSel.includes(t)?' sel':''}" onclick="toggleAdvFilterTag('${escH(t)}')">${escH(t)}</button>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleAdvFilterTag(tag){
+  const i=S.advFilterSel.indexOf(tag);
+  if(i>=0)S.advFilterSel.splice(i,1);else S.advFilterSel.push(tag);
+  renderAdvSearchUI();
+  S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
+}
+
+// ── ナビゲーション ──
+function scrollToMain(){document.getElementById('mainContent')?.scrollIntoView({behavior:'smooth'});}
+function scrollToFilter(){document.getElementById('filter-sec')?.scrollIntoView({behavior:'smooth'});}
+
+// ── ユーザー認証（localStorage簡易版、将来Supabase/Discord OAuth対応） ──
+function initUser(){
+  let uid=localStorage.getItem('ic_uid');
+  if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('ic_uid',uid);}
+  S.currentUserId=uid;
+  const av=document.getElementById('userAvatar');
+  if(av)av.textContent=uid.slice(5,7).toUpperCase();
+  const bar=document.getElementById('authContent');
+  if(bar)bar.innerHTML=`
+    <div style="font-size:10px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:6px;">ユーザーID</div>
+    <div style="font-size:11px;color:var(--tx2);font-family:'Space Mono',monospace;margin-bottom:10px;">${uid}</div>
+    <div style="font-size:10px;color:var(--tx3);line-height:1.6;">現在は匿名IDで動作しています。<br>将来的にDiscordログインに対応予定。</div>
+    <a href="moderator.html" style="display:block;margin-top:10px;font-size:11px;color:var(--ac2);">⚙ モデレーター管理画面</a>
+  `;
+}
+function toggleAuthBar(){
+  document.getElementById('authBar').classList.toggle('open');
+}
+
+// ── API키 利便性維持（設定パネル不要だが内部機能は残す） ──
+function saveApiKey(){}
+function toggleApiPanel(){}
+document.addEventListener('click',e=>{
+  const bar=document.getElementById('authBar');
+  const btn=document.getElementById('userBtn');
+  if(bar?.classList.contains('open')&&!bar.contains(e.target)&&!btn?.contains(e.target))
+    bar.classList.remove('open');
+});
+
+// ══════════════════════════════════════════
+//  SIMILAR MODAL
+// ══════════════════════════════════════════
+function openSim(vid) {
+  const song=S.songs.find(s=>s.videoId===vid);
+  if(!song)return;
+  const tag=getTag(vid);
+  if(!tag){showToast('先にタグを登録してください');toggleTagPanel(vid);return;}
+  const results=findSimilar(vid);
+  document.getElementById('simSub').textContent=`${song.title} に近い楽曲`;
+  const body=document.getElementById('simBody');
+  body.innerHTML=`
+    <div class="sim-ref-thumb">
+      <img src="${thumbUrl(vid)}" alt="${escH(song.title)}">
+      <div class="sim-ref-over"><div><div class="srt">${escH(song.title)}</div><div class="sra">${escH(song.artist)}</div></div></div>
+    </div>
+    <div class="sim-list">
+      ${results.length?results.map(({song:s,dist})=>`
+        <div class="sim-item" onclick="window.open('${ytUrl(s.videoId)}','_blank')">
+          <div class="sim-item-thumb"><img src="${thumbUrl(s.videoId)}" alt="${escH(s.title)}" loading="lazy"></div>
+          <div style="flex:1;min-width:0;">
+            <div class="sim-item-title">${escH(s.title)}</div>
+            <div class="sim-item-artist">${escH(s.artist)}</div>
+          </div>
+          <div class="sim-dist">${dist.toFixed(1)}</div>
+        </div>`).join('')
+      :`<div class="empty"><div class="empty-ic">🔍</div><div class="empty-t">類似楽曲なし</div><div class="empty-d">他の楽曲にもタグを登録すると表示されます</div></div>`}
+    </div>`;
+  document.getElementById('simOverlay').classList.add('open');
+}
+function closeSimModal(){document.getElementById('simOverlay').classList.remove('open');}
+
+// overlay click outside
+['addOverlay','simOverlay','tagEditOverlay','reportOverlay'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    if(e.target.id===id){
+      if(id==='tagEditOverlay') closeTagEditModal();
+      else document.getElementById(id).classList.remove('open');
+    }
+  });
+});
+
+// ══════════════════════════════════════════
+//  LIKE
+// ══════════════════════════════════════════
+async function toggleLike(vid) {
+  let data;
+  try{
+    data=await apiFetch('/api/like-toggle',{
+      method:'POST',
+      body:{userId:S.currentUserId,videoId:vid},
+    });
+  }catch(e){showToast('いいね保存に失敗しました');return;}
+  applySongState(vid,null,data.likes,data.liked);
+  // update card like btn
+  const btn=document.getElementById(`like-${vid}`);
+  if(btn){
+    const liked=S.liked.has(vid);
+    btn.className='like-btn'+(liked?' liked':'');
+    const cnt=S.likes[vid]||0;
+    btn.innerHTML=`${liked?'♥':'♡'} <span>${cnt||''}</span>`;
+  }
+  // update player like btn if open
+  if(S.currentPlayerVid===vid) updatePlayerLikeBtn();
+}
+function updatePlayerLikeBtn(){
+  const vid=S.currentPlayerVid;
+  if(!vid)return;
+  const btn=document.getElementById('playerLikeBtn');
+  const cnt=document.getElementById('playerLikeCnt');
+  if(!btn)return;
+  const liked=S.liked.has(vid);
+  btn.className='like-btn'+(liked?' liked':'');
+  btn.childNodes[0].textContent=(liked?'♥ いいね済':'♡ いいね')+' ';
+  if(cnt)cnt.textContent=S.likes[vid]||0;
+}
+function togglePlayerLike(){
+  if(S.currentPlayerVid)toggleLike(S.currentPlayerVid);
+}
+
+// ══════════════════════════════════════════
+//  HOVER SLIDERS
+// ══════════════════════════════════════════
+function onHoverSlider(input){
+  const {vid,dim}=input.dataset;
+  const v=parseInt(input.value);
+  const el=document.getElementById(`hsv-${vid}-${dim}`);
+  if(el)el.textContent=v;
+  if(!S.pendingTagValues[vid])S.pendingTagValues[vid]={};
+  S.pendingTagValues[vid][dim]=v;
+}
+async function saveHoverTag(vid){
+  // 必ずスライダー値を読み直す（pendingがなければsliderから）
+  S.pendingTagValues[vid]=S.pendingTagValues[vid]||{};
+  TAG_DIMS.forEach(d=>{
+    const sl=document.querySelector(`#hs-${vid} input[data-dim="${d.key}"]`);
+    if(sl) S.pendingTagValues[vid][d.key]=parseInt(sl.value);
+    else if(S.pendingTagValues[vid][d.key]==null) S.pendingTagValues[vid][d.key]=10;
+  });
+  const complete={};
+  TAG_DIMS.forEach(d=>{complete[d.key]=S.pendingTagValues[vid]?.[d.key]??10;});
+  try{
+    await saveTag(vid,complete);
+  }catch(e){showToast('タグ保存に失敗しました');return;}
+  updateCardTag(vid,getTag(vid));
+  // update tag btn text
+  const card=document.querySelector(`.song-card[data-vid="${vid}"]`);
+  if(card){const btn=card.querySelector('.chb-btn.tg');const t=getTag(vid);if(btn&&t)btn.textContent=`🏷 タグ編集 (${t.votes}票)`;}
+  showToast('タグを保存しました！');
+  S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
+}
+
+// ══════════════════════════════════════════
+//  RANDOM PLAYER
+// ══════════════════════════════════════════
+function openRandomPlayer(){
+  if(!S.songs||!S.songs.length){showToast('楽曲を読み込み中です...');return;}
+  S.randomHistory=[];
+  nextRandomSong();
+}
+function nextRandomSong(){
+  if(!S.songs||!S.songs.length){showToast('楽曲を読み込み中です...');return;}
+  const available=S.pool.filter(s=>!S.randomHistory.includes(s.videoId)&&!s._private);
+  if(!available.length){
+    // reshuffle
+    S.randomHistory=[];
+    const all=S.pool.filter(s=>!s._private);
+    if(!all.length){showToast('楽曲がありません');return;}
+  }
+  const pool2=S.pool.filter(s=>!S.randomHistory.includes(s.videoId)&&!s._private);
+  const song=pool2[Math.floor(Math.random()*pool2.length)];
+  if(!song){showRandomEnd();return;}
+  S.randomHistory.push(song.videoId);
+  showSongInPlayer(song);
+}
+function showSongInPlayer(song){
+  S.currentPlayerVid=song.videoId;
+  const meta=S.ytMeta[song.videoId]||{};
+  const title=meta.title||song.title||'(タイトル不明)';
+  const artist=meta.channelName||song.artist||'';
+  document.getElementById('playerTitle').textContent=title;
+  document.getElementById('playerSub').textContent=artist+(song.category?` • ${song.category}`:'');
+  document.getElementById('playerFrame').src=`https://www.youtube.com/embed/${song.videoId}`;
+  const ytLink=document.getElementById('playerYtLink');
+  ytLink.href=ytUrl(song.videoId);
+  // build vote sliders
+  const tag=getTag(song.videoId);
+  const sliders=document.getElementById('playerVoteSliders');
+  sliders.innerHTML=TAG_DIMS.map(d=>`
+    <div class="pv-row">
+      <span class="pv-lbl" style="color:${d.color}">${escH(d.label)}</span>
+      <input type="range" class="pv-slider" min="0" max="20" value="${tag?(tag[d.key]??10):10}"
+        style="--accent-color:${d.color}"
+        data-vid="${song.videoId}" data-dim="${d.key}"
+        oninput="onPlayerSlider(this)">
+      <span class="pv-val" id="pv-${song.videoId}-${d.key}">${tag?(tag[d.key]??10):10}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:7px;color:rgba(255,255,255,.2);font-family:'Space Mono',monospace;padding:0 16px 2px 30px;"><span>${escH(d.left)}</span><span>${escH(d.right)}</span></div>
+  `).join('');
+  // init pending
+  S.pendingTagValues[song.videoId]={};
+  TAG_DIMS.forEach(d=>{S.pendingTagValues[song.videoId][d.key]=tag?(tag[d.key]??10):10;});
+  updatePlayerLikeBtn();
+  const pS=document.getElementById('playerAdvSide');
+  const pB=document.getElementById('playerAdvBtn');
+  const pX=document.getElementById('playerBox');
+  const pA=document.getElementById('playerAdvBody');
+  if(pS){pS.classList.remove('open');}
+  if(pX){pX.classList.remove('adv-open');}
+  if(pB){pB.textContent='高度なタグ ▶';}
+  if(pA){pA.innerHTML='<div class="exp-side-head">高度なタグ</div>';}
+  document.getElementById('playerOverlay').classList.add('open');
+}
+function onPlayerSlider(input){
+  const {vid,dim}=input.dataset;
+  const v=parseInt(input.value);
+  const el=document.getElementById(`pv-${vid}-${dim}`);
+  if(el)el.textContent=v;
+  if(!S.pendingTagValues[vid])S.pendingTagValues[vid]={};
+  S.pendingTagValues[vid][dim]=v;
+}
+async function submitPlayerVote(){
+  const vid=S.currentPlayerVid;
+  if(!vid)return false;
+  const vals=S.pendingTagValues[vid];
+  if(!vals)return false;
+  const complete={};
+  TAG_DIMS.forEach(d=>{complete[d.key]=vals[d.key]??10;});
+  try{
+    await saveTag(vid,complete);
+  }catch(e){showToast('投票に失敗しました');return false;}
+  showToast('投票しました！');
+  updateCardTag(vid,getTag(vid));
+  S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
+  return true;
+}
+function closeRandomPlayer(){
+  document.getElementById('playerOverlay').classList.remove('open');
+  document.getElementById('playerFrame').src='';
+  S.currentPlayerVid=null;
+}
+function showRandomEnd(){
+  document.getElementById('playerTitle').textContent='全楽曲を制覇しました！🎉';
+  document.getElementById('playerSub').textContent='';
+  document.getElementById('playerFrame').src='';
+  S.randomHistory=[];
+}
+document.getElementById('playerOverlay').addEventListener('click',e=>{
+  if(e.target.id==='playerOverlay')closeRandomPlayer();
+});
+
+
+function setLoading(on,done=0,total=9){
+  document.getElementById('loadProgress').style.display=on?'block':'none';
+  if(on){
+    const pct=total?Math.round(done/total*100):0;
+    document.getElementById('lpBar').style.width=pct+'%';
+    document.getElementById('lpText').textContent=done>=total
+      ?'読み込み完了'
+      :`${SHEET_YEARS[done]?.year||''}年シートを読み込み中... (${done}/${total})`;
+  }
+}
+function showErr(h){const e=document.getElementById('errBanner');e.innerHTML=h;e.className='err-banner';e.style.display='block';}
+function showWarn(m){showErr(`⚠️ ${m}`);}
+function hideErr(){document.getElementById('errBanner').style.display='none';}
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+let toastT;
+function showToast(msg){
+  clearTimeout(toastT);
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  toastT=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+async function init(){
+  load();
+  initUser();
+  // show skeletons
+  const g=document.getElementById('mainGrid');
+  g.innerHTML='';
+  for(let i=0;i<24;i++)g.appendChild(makeSkel());
+
+  buildFilterSliders();
+
+  const songs=await fetchAllSheets();
+  S.songs=songs;
+  try{
+    await loadSharedState();
+  }catch(e){
+    showWarn('共有データの読み込みに失敗したため、タグといいねは最新状態でない可能性があります');
+  }
+  buildCategories();
+  rebuildPool();
+  S.filterPool=computeFilterPool();
+  S.filterShown=PAGE;
+  renderMain();
+  renderFilter();
+
+try {
+  if (typeof loadClicks === 'function') {
+    S.clicks = loadClicks();
+  }
+  if (typeof recordPageAccess === 'function') {
+    recordPageAccess();
+  }
+} catch(e) {
+  console.error(e);
+}
+}
+
+
+// ── 管理者への連絡 ──
+async function submitContact(){
+  const body=document.getElementById('contactBody').value.trim();
+  if(!body){showToast('内容を入力してください');return;}
+  const name=document.getElementById('contactName').value.trim();
+  const addr=document.getElementById('contactAddr').value.trim();
+  const type=document.querySelector('input[name="contactType"]:checked')?.value||'other';
+  try{
+    await apiFetch('/api/contact',{
+      method:'POST',
+      body:{name,addr,type,body},
+    });
+  }catch(e){showToast('送信に失敗しました');return;}
+  document.getElementById('contactBody').value='';
+  document.getElementById('contactOverlay').classList.remove('open');
+  showToast('送信しました。ありがとうございます！');
+}
+init();
+</script>
+
+<!-- ═══ CONTACT MODAL ═══ -->
+<div class="overlay" id="contactOverlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-hd">
+      <div><div class="modal-title">💬 管理者へ連絡</div><div class="modal-sub">バグ報告・機能提案・お問い合わせ</div></div>
+      <button class="modal-x" onclick="document.getElementById('contactOverlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;">
+        <label style="font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px;display:block;">お名前（任意）</label>
+        <input class="fld-input" id="contactName" type="text" placeholder="ニックネームでも可">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px;display:block;">連絡先（任意）</label>
+        <input class="fld-input" id="contactAddr" type="text" placeholder="X / Discord / メール">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px;display:block;">種別</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx2);cursor:pointer;"><input type="radio" name="contactType" value="bug" checked style="accent-color:var(--ac)"> 🐛 バグ報告</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx2);cursor:pointer;"><input type="radio" name="contactType" value="feature" style="accent-color:var(--ac)"> 💡 機能提案</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx2);cursor:pointer;"><input type="radio" name="contactType" value="other" style="accent-color:var(--ac)"> 📝 その他</label>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:10px;font-family:'Space Mono',monospace;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px;display:block;">内容</label>
+        <textarea class="fld-input" id="contactBody" rows="4" placeholder="詳細を入力..."></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-pri" onclick="submitContact()">送信する</button>
+      <button class="btn-sec" onclick="document.getElementById('contactOverlay').classList.remove('open')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<footer style="text-align:center;padding:28px 16px 20px;border-top:1px solid var(--br);margin-top:40px;color:var(--tx3);font-size:12px;">
+  <div style="display:flex;justify-content:center;gap:24px;margin-bottom:10px;flex-wrap:wrap;">
+    <a href="https://imicomweb.com/" target="_blank" style="color:var(--tx2);text-decoration:none;" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--tx2)'">Imicomweb.com</a>
+    <a href="https://www.youtube.com/@subeteanatanoseidesu" target="_blank" style="color:var(--tx2);text-decoration:none;" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--tx2)'">全てあなたの所為です。</a>
+    <a href="javascript:void(0)" onclick="document.getElementById('contactOverlay').classList.add('open')" style="color:var(--tx2);text-decoration:none;" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--tx2)'">管理者へ連絡</a>
+    <a href="tos.html" target="_blank" style="color:var(--tx2);text-decoration:none;" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--tx2)'">利用規約</a>
+    <a href="privacy.html" target="_blank" style="color:var(--tx2);text-decoration:none;" onmouseover="this.style.color='var(--tx)'" onmouseout="this.style.color='var(--tx2)'">プライバシーポリシー</a>
+  </div>
+  <div style="line-height:1.8;">
+    このサイトは「全てあなたの所為です。」の二次創作であり、非公式です。<br>
+    © 2020-Imitate Community / ©︎2026-Imitate Collection
+  </div>
+</footer>
+</body>
+</html>

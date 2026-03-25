@@ -1,0 +1,59 @@
+CREATE TABLE IF NOT EXISTS tag_votes (
+  video_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  mood INTEGER NOT NULL,
+  rhythm INTEGER NOT NULL,
+  melody INTEGER NOT NULL,
+  origin INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (video_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS adv_tag_votes (
+  video_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  selected INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (video_id, user_id, tag)
+);
+
+CREATE TABLE IF NOT EXISTS likes (
+  video_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (video_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  video_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  contact TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL DEFAULT 'other',
+  comment TEXT NOT NULL DEFAULT '',
+  resolved INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL DEFAULT '',
+  addr TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL DEFAULT 'other',
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_cache (
+  cache_key TEXT PRIMARY KEY,
+  payload TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tag_votes_user ON tag_votes(user_id);
+CREATE INDEX IF NOT EXISTS idx_adv_tag_votes_video ON adv_tag_votes(video_id);
+CREATE INDEX IF NOT EXISTS idx_likes_video ON likes(video_id);
+CREATE INDEX IF NOT EXISTS idx_reports_video ON reports(video_id);
