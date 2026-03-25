@@ -35,6 +35,12 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 .hdr-search input::placeholder{color:var(--tx3);}
 .hdr-search-ic{color:var(--tx3);padding:0 12px;font-size:14px;flex-shrink:0;}
 .hdr-right{display:flex;gap:6px;margin-left:auto;flex-shrink:0;align-items:center;}
+.hdr-menu-btn{display:none;width:32px;height:32px;border-radius:16px;align-items:center;justify-content:center;border:1px solid var(--br);color:var(--tx2);background:none;font-size:18px;line-height:1;transition:all .18s;}
+.hdr-menu-btn:hover{background:var(--s1);color:var(--tx);border-color:var(--br2);}
+.hdr-mobile-menu{position:absolute;top:46px;right:14px;min-width:190px;background:var(--s1);border:1px solid var(--br);border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.45);padding:6px;display:none;z-index:320;}
+.hdr-mobile-menu.open{display:block;}
+.hdr-mobile-item{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;color:var(--tx2);font-size:12px;text-align:left;transition:all .18s;}
+.hdr-mobile-item:hover{background:var(--s2);color:var(--tx);}
 .hbtn{height:32px;padding:0 12px;border-radius:16px;font-size:12px;display:flex;align-items:center;gap:4px;transition:all .18s;border:1px solid var(--br);color:var(--tx2);background:none;}
 .hbtn:hover{background:var(--s1);color:var(--tx);border-color:var(--br2);}
 .hbtn.pri{background:var(--ac);border-color:transparent;color:#fff;}
@@ -101,6 +107,25 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 /* ═══ MAIN ═══ */
 .main{margin-top:54px;padding:0 14px 80px;max-width:1800px;margin-left:auto;margin-right:auto;}
 @media(min-width:768px){.main{padding:0 20px 80px;}}
+@media(max-width:860px){
+  .hdr{padding:0 10px;gap:8px;}
+  .logo-sub{display:none;}
+  .hdr-search{min-width:0;max-width:none;}
+  .hdr-right .hbtn-nav:not(#userBtn){display:none;}
+  .hdr-menu-btn{display:flex;}
+}
+@media(max-width:640px){
+  .logo-name{font-size:12px;}
+  .auth-avatar{width:24px;height:24px;}
+  .card-hover-sliders{padding:8px 8px 6px;justify-content:flex-start;gap:4px;}
+  .chs-head{font-size:8px;margin-bottom:1px;}
+  .chs-row{gap:6px;}
+  .chs-lbl{width:28px;font-size:8px;}
+  .chs-slider{min-width:0;}
+  .chs-val{width:14px;font-size:8px;}
+  .chs-save-btn{margin-top:2px;padding:4px;font-size:9px;}
+  .card-thumb-area:hover .card-thumb{transform:none;}
+}
 
 /* ═══ CATEGORY CHIPS ═══ */
 .chips-wrap{position:sticky;top:54px;z-index:200;background:rgba(15,15,15,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--br);padding:8px 0;}
@@ -418,6 +443,12 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
     <button class="hbtn-nav" id="userBtn" onclick="toggleAuthBar()" style="padding:0 8px;">
       <div class="auth-avatar" id="userAvatar">?</div>
     </button>
+    <button class="hdr-menu-btn" id="hdrMenuBtn" onclick="toggleHeaderMenu()" aria-label="メニュー">⋯</button>
+    <div class="hdr-mobile-menu" id="hdrMobileMenu">
+      <button class="hdr-mobile-item" onclick="openRandomPlayer();closeHeaderMenu()">🎲 ランダム試聴</button>
+      <button class="hdr-mobile-item" onclick="scrollToMain();closeHeaderMenu()">🎵 楽曲一覧</button>
+      <button class="hdr-mobile-item" onclick="scrollToFilter();closeHeaderMenu()">🎛 絞り込み</button>
+    </div>
   </div>
 </header>
 
@@ -1982,6 +2013,15 @@ function initUser(){
 function toggleAuthBar(){
   document.getElementById('authBar').classList.toggle('open');
 }
+function toggleHeaderMenu(){
+  const menu=document.getElementById('hdrMobileMenu');
+  if(!menu)return;
+  menu.classList.toggle('open');
+}
+function closeHeaderMenu(){
+  const menu=document.getElementById('hdrMobileMenu');
+  if(menu)menu.classList.remove('open');
+}
 
 // ── API키 利便性維持（設定パネル不要だが内部機能は残す） ──
 function saveApiKey(){}
@@ -1989,8 +2029,12 @@ function toggleApiPanel(){}
 document.addEventListener('click',e=>{
   const bar=document.getElementById('authBar');
   const btn=document.getElementById('userBtn');
+  const menu=document.getElementById('hdrMobileMenu');
+  const menuBtn=document.getElementById('hdrMenuBtn');
   if(bar?.classList.contains('open')&&!bar.contains(e.target)&&!btn?.contains(e.target))
     bar.classList.remove('open');
+  if(menu?.classList.contains('open')&&!menu.contains(e.target)&&!menuBtn?.contains(e.target))
+    closeHeaderMenu();
 });
 
 // ══════════════════════════════════════════

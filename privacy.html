@@ -22,8 +22,6 @@ a{color:var(--ac2);}
 .hbtn-nav:hover{background:var(--s1);color:var(--tx);}
 .hbtn-nav.active{background:var(--ac-d);border-color:var(--ac);color:var(--ac2);}
 .wrap{max-width:740px;margin:0 auto;padding:94px 20px 80px;}
-.page-title{font-size:26px;font-weight:700;margin-bottom:4px;}
-.page-updated{font-size:12px;color:var(--tx3);margin-bottom:32px;}
 #privBody h2{font-size:16px;font-weight:700;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--br);}
 #privBody h3{font-size:14px;font-weight:600;margin:16px 0 6px;color:var(--tx2);}
 #privBody p{font-size:13px;color:var(--tx2);margin-bottom:8px;}
@@ -48,8 +46,6 @@ footer{text-align:center;padding:24px 16px;border-top:1px solid var(--br);color:
   </div>
 </header>
 <div class="wrap">
-  <div class="page-title">プライバシーポリシー</div>
-  <div class="page-updated" id="privUpdated">最終更新日: —</div>
   <div id="privBody"></div>
 </div>
 <footer style="text-align:center;padding:28px 16px 20px;border-top:1px solid var(--br);margin-top:40px;color:var(--tx3);font-size:12px;">
@@ -71,8 +67,6 @@ const DEFAULT_PRIV=`no data.`;
   try{
     const s=localStorage.getItem('ic_privacy');
     document.getElementById('privBody').innerHTML=s||DEFAULT_PRIV;
-    const u=localStorage.getItem('ic_privacy_updated');
-    document.getElementById('privUpdated').textContent='最終更新日: '+(u||'未設定');
   }catch(e){document.getElementById('privBody').innerHTML=DEFAULT_PRIV;}
 })();
 </script>
