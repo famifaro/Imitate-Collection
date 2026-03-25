@@ -2,9 +2,19 @@ import { json } from './_utils.js';
 import { readSongsCache, refreshSongsCache } from './_sheet-cache.js';
 
 export async function onRequestGet(context) {
-  let cached = await readSongsCache(context.env.DB);
-  if (!cached || !cached.songs.length) {
-    cached = await refreshSongsCache(context.env.DB);
+  try {
+    let cached = await readSongsCache(context.env.DB);
+    if (!cached || !cached.songs.length) {
+      cached = await refreshSongsCache(context.env.DB);
+    }
+    return json({ ok: true, songs: cached.songs, updatedAt: cached.updatedAt });
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+        error: `songs cache failed: ${error instanceof Error ? error.message : String(error)}`,
+      },
+      { status: 503 }
+    );
   }
-  return json({ ok: true, songs: cached.songs, updatedAt: cached.updatedAt });
 }
