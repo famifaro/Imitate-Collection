@@ -53,7 +53,22 @@ CREATE TABLE IF NOT EXISTS app_cache (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS songs_cache (
+  video_id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  artist TEXT NOT NULL DEFAULT '',
+  badge TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL DEFAULT '',
+  date TEXT NOT NULL DEFAULT '',
+  year INTEGER NOT NULL DEFAULT 0,
+  category TEXT NOT NULL DEFAULT '',
+  lyrics TEXT NOT NULL DEFAULT '',
+  sort_date TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_tag_votes_user ON tag_votes(user_id);
 CREATE INDEX IF NOT EXISTS idx_adv_tag_votes_video ON adv_tag_votes(video_id);
 CREATE INDEX IF NOT EXISTS idx_likes_video ON likes(video_id);
 CREATE INDEX IF NOT EXISTS idx_reports_video ON reports(video_id);
+CREATE INDEX IF NOT EXISTS idx_songs_cache_year_sort ON songs_cache(year, sort_date, video_id);

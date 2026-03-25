@@ -135,35 +135,61 @@ export async function refreshSongsCache(db) {
     all.push(...parseSheet(txt, year, seen));
   }
   finalizeSongs(all);
-  const payload = JSON.stringify({ songs: all, updatedAt: new Date().toISOString() });
-  await db
-    .prepare(
-      `INSERT INTO app_cache (cache_key, payload, updated_at)
-       VALUES (?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(cache_key) DO UPDATE SET
-         payload = excluded.payload,
-         updated_at = CURRENT_TIMESTAMP`
-    )
-    .bind(CACHE_KEY, payload)
-    .run();
-  return { songs: all, updatedAt: new Date().toISOString() };
+  return writeSongsCache(db, all, new Date().toISOString());
 }
 
 export async function readSongsCache(db) {
-  const row = await db
+  const meta = await db
     .prepare(`SELECT payload, updated_at FROM app_cache WHERE cache_key = ?`)
     .bind(CACHE_KEY)
     .first();
-  if (!row?.payload) return null;
-  const parsed = JSON.parse(row.payload);
+  const rows = await db
+    .prepare(
+      `SELECT video_id, title, artist, badge, url, date, year, category, lyrics
+       FROM songs_cache
+       ORDER BY year, sort_date, video_id`
+    )
+    .all();
+  if (!(rows.results || []).length) return null;
   return {
-    songs: Array.isArray(parsed?.songs) ? parsed.songs : [],
-    updatedAt: parsed?.updatedAt || row.updated_at,
+    songs: (rows.results || []).map((row) => ({
+      videoId: row.video_id,
+      title: row.title,
+      artist: row.artist,
+      badge: row.badge,
+      url: row.url,
+      date: row.date,
+      year: row.year,
+      category: row.category,
+      lyrics: row.lyrics,
+    })),
+    updatedAt: meta?.payload || meta?.updated_at || null,
   };
 }
 
 export async function writeSongsCache(db, songs, updatedAt = new Date().toISOString()) {
-  const payload = JSON.stringify({ songs, updatedAt });
+  await db.prepare(`DELETE FROM songs_cache`).run();
+  const statements = songs.map((song) =>
+    db.prepare(
+      `INSERT INTO songs_cache
+       (video_id, title, artist, badge, url, date, year, category, lyrics, sort_date, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+    ).bind(
+      song.videoId,
+      song.title || '',
+      song.artist || '',
+      song.badge || '',
+      song.url || ytUrl(song.videoId),
+      song.date || '',
+      Number(song.year || 0),
+      song.category || '',
+      song.lyrics || '',
+      normDate(song.date || '', song.year || 0)
+    )
+  );
+  for (let i = 0; i < statements.length; i += 100) {
+    await db.batch(statements.slice(i, i + 100));
+  }
   await db
     .prepare(
       `INSERT INTO app_cache (cache_key, payload, updated_at)
@@ -172,7 +198,7 @@ export async function writeSongsCache(db, songs, updatedAt = new Date().toISOStr
          payload = excluded.payload,
          updated_at = CURRENT_TIMESTAMP`
     )
-    .bind(CACHE_KEY, payload)
+    .bind(CACHE_KEY, updatedAt)
     .run();
   return { songs, updatedAt };
 }
