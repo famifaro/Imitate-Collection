@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f0f0f;--bg2:#181818;--s1:#212121;--s2:#2a2a2a;--br:#3d3d3d;--br2:#505050;--ac:#1a6ee8;--ac2:#4d94ff;--tx:#f1f1f1;--tx2:#aaa;--tx3:#777;--ac-d:rgba(26,110,232,.15);}
+body.theme-light{--bg:#f4f6fb;--bg2:#ffffff;--s1:#eef2f8;--s2:#e3e8f1;--br:#d7dde8;--br2:#bcc5d4;--ac:#1d4ed8;--ac2:#2563eb;--tx:#111827;--tx2:#4b5563;--tx3:#6b7280;--ac-d:rgba(37,99,235,.12);}
 *,::before,::after{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--tx);font-family:'Noto Sans JP',sans-serif;line-height:1.85;min-height:100vh;}
 a{color:var(--ac2);}
@@ -63,6 +64,11 @@ footer{text-align:center;padding:24px 16px;border-top:1px solid var(--br);color:
 </footer>
 <script>
 const DEFAULT_PRIV=`no data.`;
+function applyTheme(theme){
+  document.body.classList.toggle('theme-light',theme==='light');
+  localStorage.setItem('ic_theme',theme==='light'?'light':'dark');
+}
+applyTheme(localStorage.getItem('ic_theme')||'dark');
 async function loadPrivacyDoc(){
   try{
     const res=await fetch('/api/legal-doc?key=privacy');
@@ -77,7 +83,15 @@ async function loadPrivacyDoc(){
     document.getElementById('privBody').innerHTML=s||DEFAULT_PRIV;
   }catch(e){document.getElementById('privBody').innerHTML=DEFAULT_PRIV;}
 }
+async function syncThemeFromAuth(){
+  try{
+    const res=await fetch('/api/auth/me');
+    const data=await res.json();
+    if(res.ok&&data.user?.theme) applyTheme(data.user.theme);
+  }catch(e){}
+}
 loadPrivacyDoc();
+syncThemeFromAuth();
 </script>
 </body>
 </html>

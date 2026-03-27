@@ -12,6 +12,12 @@
   --ac:#1a6ee8;--ac2:#4d94ff;
   --tx:#f1f1f1;--tx2:#aaa;--tx3:#777;
 }
+body.theme-light{
+  --bg:#f4f6fb;--bg2:#ffffff;--s1:#eef2f8;--s2:#e3e8f1;--s3:#d4dae6;
+  --br:#d7dde8;--br2:#bcc5d4;
+  --ac:#1d4ed8;--ac2:#2563eb;
+  --tx:#111827;--tx2:#4b5563;--tx3:#6b7280;
+}
 *,::before,::after{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--tx);font-family:'Noto Sans JP',sans-serif;font-weight:400;min-height:100vh;display:flex;flex-direction:column;}
 a{color:inherit;text-decoration:none;}
@@ -170,6 +176,9 @@ button{cursor:pointer;font-family:inherit;border:none;}
     <div class="sb-item" data-panel="reports" onclick="showPanel('reports')">
       <span class="sb-ic">⚠️</span><span>報告一覧</span>
     </div>
+    <div class="sb-item" data-panel="contacts" onclick="showPanel('contacts')">
+      <span class="sb-ic">💬</span><span>連絡一覧</span>
+    </div>
 
     <div class="sb-section">楽曲</div>
     <div class="sb-item" data-panel="songs" onclick="showPanel('songs')">
@@ -211,6 +220,12 @@ button{cursor:pointer;font-family:inherit;border:none;}
       <div class="panel-title">報告一覧</div>
       <div class="panel-sub">ユーザーからの報告を確認・処理します</div>
       <div id="reportsList"></div>
+    </div>
+
+    <div class="panel" id="panel-contacts">
+      <div class="panel-title">連絡一覧</div>
+      <div class="panel-sub">管理者への連絡フォームに送信された内容を確認します</div>
+      <div id="contactsList"></div>
     </div>
 
     <!-- SONGS -->
@@ -416,6 +431,13 @@ let REMOTE_PRIVACY_UPDATED_AT='';
 let REMOTE_USERS=[];
 let REMOTE_STATS=null;
 let CURRENT_USER=null;
+let REMOTE_CONTACTS=[];
+
+function applyTheme(theme){
+  const mode=theme==='light'?'light':'dark';
+  document.body.classList.toggle('theme-light',mode==='light');
+  localStorage.setItem('ic_theme',mode);
+}
 
 async function apiFetch(path, options={}){
   const res=await fetch(path,{
@@ -428,7 +450,7 @@ async function apiFetch(path, options={}){
   return data;
 }
 async function syncRemoteData(){
-  const [songsApi, bootstrap, reportsRes, tosDoc, privacyDoc, usersRes, statsRes] = await Promise.all([
+  const [songsApi, bootstrap, reportsRes, tosDoc, privacyDoc, usersRes, statsRes, contactsRes] = await Promise.all([
     apiFetch('/api/songs'),
     apiFetch('/api/bootstrap'),
     apiFetch('/api/reports'),
@@ -436,18 +458,21 @@ async function syncRemoteData(){
     apiFetch('/api/legal-doc?key=privacy'),
     apiFetch('/api/users'),
     apiFetch('/api/stats'),
+    apiFetch('/api/contacts'),
   ]);
   REMOTE_SONGS=Array.isArray(songsApi?.songs)?songsApi.songs:[];
   REMOTE_SONGS_UPDATED_AT=songsApi?.updatedAt||'';
   REMOTE_TAGS=bootstrap.tags||{};
   REMOTE_REPORTS=reportsRes.reports||[];
   CURRENT_USER=bootstrap.user||null;
+  applyTheme(CURRENT_USER?.theme||localStorage.getItem('ic_theme')||'dark');
   REMOTE_TOS_HTML=String(tosDoc?.content||'');
   REMOTE_TOS_UPDATED_AT=String(tosDoc?.updatedAt||'');
   REMOTE_PRIVACY_HTML=String(privacyDoc?.content||'');
   REMOTE_PRIVACY_UPDATED_AT=String(privacyDoc?.updatedAt||'');
   REMOTE_USERS=usersRes.users||[];
   REMOTE_STATS=statsRes||null;
+  REMOTE_CONTACTS=contactsRes.contacts||[];
 }
 
 function renderSongCacheStatus(updatedAt){
@@ -621,6 +646,7 @@ function getCache(){ return REMOTE_SONGS; }
 function getUsers(){ return REMOTE_USERS; }
 function getStats(){ return REMOTE_STATS; }
 function getCurrentUser(){ return CURRENT_USER; }
+function getContacts(){ return REMOTE_CONTACTS; }
 function getHidden(){ try{return JSON.parse(localStorage.getItem('ic_hidden')||'[]')}catch(e){return[]} }
 function setHidden(h){ localStorage.setItem('ic_hidden',JSON.stringify(h)) }
 function getBanned(){ try{return JSON.parse(localStorage.getItem('ic_banned')||'[]')}catch(e){return[]} }
@@ -649,6 +675,7 @@ function renderPanel(id){
   switch(id){
     case'dashboard': renderDashboard(); break;
     case'reports':   renderReports(); break;
+    case'contacts':  renderContacts(); break;
     case'songs':     renderSongTable(); break;
     case'tags':      renderTagPanel(); break;
     case'adv_tags_cfg': renderAdvTagsCfg(); break;
@@ -878,6 +905,24 @@ function renderReports(){
       </div>
     </div>`;
   }).join('');
+}
+function renderContacts(){
+  const contacts=getContacts();
+  const el=document.getElementById('contactsList');
+  if(!contacts.length){el.innerHTML='<p style="color:var(--tx3);padding:20px;">連絡はまだありません</p>';return;}
+  const typeLabel={bug:'バグ報告',feature:'機能提案',other:'その他'};
+  el.innerHTML=contacts.map((c)=>`
+    <div class="report-item">
+      <div class="report-item-head">
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:3px;">${escH(typeLabel[c.type]||c.type)}</div>
+          <div class="report-meta">送信者: ${escH(c.name||'匿名')} ${c.addr?`/ ${escH(c.addr)}`:''}</div>
+          <div class="report-meta" style="margin-top:6px;white-space:pre-wrap;">${escH(c.body)}</div>
+          <div class="report-meta">${c.createdAt?new Date(c.createdAt).toLocaleString('ja-JP'):''}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
 }
 async function resolveReport(idx){
   const r=getReports();

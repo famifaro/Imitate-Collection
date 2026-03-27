@@ -1,4 +1,4 @@
-import { json } from './_utils.js';
+import { ensureUserTables, json } from './_utils.js';
 
 async function scalar(db, sql) {
   const row = await db.prepare(sql).first();
@@ -6,6 +6,7 @@ async function scalar(db, sql) {
 }
 
 export async function onRequestGet(context) {
+  await ensureUserTables(context.env.DB);
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
   const sevenDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7).toISOString();

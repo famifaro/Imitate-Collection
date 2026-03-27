@@ -12,6 +12,51 @@ const AUTH_STATE_COOKIE = 'ic_auth_state';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const AUTH_STATE_TTL_MS = 1000 * 60 * 10;
 
+export async function ensureUserTables(db) {
+  await db.batch([
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        discord_user_id TEXT NOT NULL UNIQUE,
+        username TEXT NOT NULL DEFAULT '',
+        display_name TEXT NOT NULL DEFAULT '',
+        avatar_url TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    ),
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    ),
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS login_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    ),
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS banned_users (
+        user_id TEXT PRIMARY KEY,
+        reason TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    ),
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS user_settings (
+        user_id TEXT PRIMARY KEY,
+        theme TEXT NOT NULL DEFAULT 'dark',
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    ),
+  ]);
+}
+
 export async function readJson(request) {
   try {
     return await request.json();
@@ -54,6 +99,27 @@ export function getVideoId(value) {
 
 export function makeAppUserId() {
   return `usr_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;
+}
+
+function parseIdList(raw) {
+  return new Set(
+    String(raw || '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+  );
+}
+
+export function isDiscordLoginAllowed(discordUserId, env) {
+  const allowed = parseIdList(env.DISCORD_ALLOWED_USER_IDS);
+  if (!allowed.size) return true;
+  return allowed.has(String(discordUserId || '').trim());
+}
+
+export function canModerate(discordUserId, env) {
+  const mods = parseIdList(env.MODERATOR_DISCORD_USER_IDS || env.DISCORD_ALLOWED_USER_IDS);
+  if (!mods.size) return false;
+  return mods.has(String(discordUserId || '').trim());
 }
 
 function getCookieMap(request) {
@@ -113,6 +179,19 @@ export async function createSession(db, userId) {
   return { sessionId, expiresAt };
 }
 
+export async function upsertUserSettings(db, userId, patch = {}) {
+  const theme = patch.theme === 'light' ? 'light' : 'dark';
+  await db.prepare(
+    `INSERT INTO user_settings (user_id, theme, updated_at)
+     VALUES (?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(user_id) DO UPDATE SET
+       theme = excluded.theme,
+       updated_at = CURRENT_TIMESTAMP`
+  )
+    .bind(userId, theme)
+    .run();
+}
+
 export async function recordLogin(db, userId) {
   await db.prepare(`INSERT INTO login_events (user_id) VALUES (?)`).bind(userId).run();
 }
@@ -130,6 +209,7 @@ export async function clearSession(db, sessionId) {
 }
 
 export async function getSessionUser(request, env) {
+  await ensureUserTables(env.DB);
   const sessionId = getSessionIdFromRequest(request);
   if (!sessionId) return null;
 
@@ -144,9 +224,11 @@ export async function getSessionUser(request, env) {
       u.avatar_url,
       u.created_at,
       u.updated_at,
+      us.theme,
       CASE WHEN b.user_id IS NULL THEN 0 ELSE 1 END AS is_banned
     FROM sessions s
     JOIN users u ON u.id = s.user_id
+    LEFT JOIN user_settings us ON us.user_id = u.id
     LEFT JOIN banned_users b ON b.user_id = u.id
     WHERE s.id = ?`
   )
@@ -169,7 +251,9 @@ export async function getSessionUser(request, env) {
       avatarUrl: row.avatar_url,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      theme: row.theme === 'light' ? 'light' : 'dark',
       isBanned: Boolean(row.is_banned),
+      canModerate: canModerate(row.discord_user_id, env),
     },
   };
 }

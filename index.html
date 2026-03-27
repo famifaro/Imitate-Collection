@@ -13,6 +13,12 @@
   --ac:#1a6ee8;--ac2:#4d94ff;--ac-d:rgba(26,110,232,.15);
   --c0:#818cf8;--c1:#fbbf24;--c2:#f472b6;--c3:#4ade80;
 }
+body.theme-light{
+  --bg:#f4f6fb;--bg2:#ffffff;--s1:#eef2f8;--s2:#e3e8f1;--s3:#d4dae6;
+  --br:#d7dde8;--br2:#bcc5d4;
+  --tx:#111827;--tx2:#4b5563;--tx3:#6b7280;
+  --ac:#1d4ed8;--ac2:#2563eb;--ac-d:rgba(37,99,235,.12);
+}
 *,::before,::after{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{background:var(--bg);color:var(--tx);font-family:'Noto Sans JP',sans-serif;font-weight:400;min-height:100vh;overflow-x:hidden;}
@@ -657,6 +663,32 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
   <div id="authContent"></div>
 </div>
 
+<div class="overlay" id="settingsOverlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-hd">
+      <div><div class="modal-title">設定</div><div class="modal-sub">アカウントと表示設定</div></div>
+      <button class="modal-x" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fld">
+        <label class="fld-label">ユーザー名</label>
+        <input class="fld-input" id="settingsDisplayName" type="text" maxlength="40" placeholder="表示名">
+      </div>
+      <div class="fld">
+        <label class="fld-label">テーマ</label>
+        <div style="display:flex;gap:8px;">
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx2);cursor:pointer;"><input type="radio" name="themeMode" value="dark" checked style="accent-color:var(--ac)"> ダーク</label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx2);cursor:pointer;"><input type="radio" name="themeMode" value="light" style="accent-color:var(--ac)"> ライト</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-pri" style="flex:1;" onclick="submitProfile()">保存する</button>
+        <button class="btn-sec" onclick="openContactFromSettings()">管理者へ連絡</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ SIMILAR MODAL ═══ -->
 <div class="overlay" id="simOverlay">
   <div class="modal">
@@ -786,6 +818,7 @@ let S = {
   currentPlayerVid: null,
   currentUserId: '',
   currentUser: null,
+  loginRestricted: false,
 };
 
 // ══════════════════════════════════════════
@@ -910,6 +943,14 @@ function getMyAdvTags(vid){
 function getEditableTagValues(vid){
   return getMyTag(vid)||getTag(vid)||null;
 }
+function applyTheme(theme){
+  const mode=theme==='light'?'light':'dark';
+  document.body.classList.toggle('theme-light',mode==='light');
+  localStorage.setItem('ic_theme',mode);
+}
+function getCurrentTheme(){
+  return S.currentUser?.theme||localStorage.getItem('ic_theme')||'dark';
+}
 async function loadSharedState(){
   const data=await apiFetch('/api/bootstrap');
   S.tags=data.tags||{};
@@ -919,6 +960,8 @@ async function loadSharedState(){
   S.myAdvTags=data.myAdvTags||{};
   S.currentUser=data.user||null;
   S.currentUserId=data.user?.id||'';
+  S.loginRestricted=!!data.loginRestricted;
+  applyTheme(data.user?.theme||getCurrentTheme());
   updateAuthUI();
 }
 async function fetchServerSongs(){
@@ -2104,10 +2147,9 @@ function updateAuthUI(){
   if(!bar)return;
   if(!isLoggedIn()){
     bar.innerHTML=`
-      <div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:6px;">Discordログイン</div>
-      <div style="font-size:10px;color:var(--tx3);line-height:1.6;margin-bottom:10px;">未ログインでも閲覧はできます。<br>タグ登録と報告はログイン後に利用できます。</div>
+      <div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:6px;">アカウント</div>
+      <div style="font-size:10px;color:var(--tx3);line-height:1.6;margin-bottom:10px;">未ログインでも閲覧はできます。<br>タグ登録と報告はログイン後に利用できます。${S.loginRestricted?'<br>Discordログインは許可ユーザーのみ利用できます。':''}</div>
       <a class="btn-pri" href="/api/auth/discord/start" style="display:block;text-align:center;text-decoration:none;">Discordでログイン</a>
-      <a href="moderator.html" style="display:block;margin-top:10px;font-size:11px;color:var(--ac2);">⚙ モデレーター管理画面</a>
     `;
     return;
   }
@@ -2117,15 +2159,11 @@ function updateAuthUI(){
     <div style="font-size:10px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:6px;">USER</div>
     <div style="font-size:12px;color:var(--tx);font-weight:600;margin-bottom:4px;">${displayName}</div>
     <div style="font-size:11px;color:var(--tx2);font-family:'Space Mono',monospace;margin-bottom:10px;">${userId}</div>
-    <div class="fld" style="margin-bottom:10px;">
-      <label class="fld-label">表示名</label>
-      <input class="fld-input" id="profileDisplayName" type="text" maxlength="40" value="${displayName}">
-    </div>
     <div style="display:flex;gap:6px;">
-      <button class="btn-pri" style="flex:1;" onclick="submitProfile()">保存</button>
+      <button class="btn-pri" style="flex:1;" onclick="openSettingsModal()">設定</button>
       <button class="btn-sec" onclick="logout()">ログアウト</button>
     </div>
-    <a href="moderator.html" style="display:block;margin-top:10px;font-size:11px;color:var(--ac2);">⚙ モデレーター管理画面</a>
+    ${S.currentUser.canModerate?'<a href="moderator.html" style="display:block;margin-top:10px;font-size:11px;color:var(--ac2);">⚙ モデレーター管理画面</a>':''}
   `;
 }
 async function initUser(){
@@ -2133,9 +2171,12 @@ async function initUser(){
     const data=await apiFetch('/api/auth/me');
     S.currentUser=data.user||null;
     S.currentUserId=data.user?.id||'';
+    S.loginRestricted=!!data.loginRestricted;
+    applyTheme(data.user?.theme||getCurrentTheme());
   }catch(e){
     S.currentUser=null;
     S.currentUserId='';
+    applyTheme(getCurrentTheme());
   }
   updateAuthUI();
 }
@@ -2147,17 +2188,20 @@ function requireLogin(action='この機能'){
 }
 async function submitProfile(){
   if(!isLoggedIn())return;
-  const input=document.getElementById('profileDisplayName');
+  const input=document.getElementById('settingsDisplayName');
   const displayName=input?.value.trim()||'';
+  const theme=document.querySelector('input[name="themeMode"]:checked')?.value||'dark';
   if(!displayName){showToast('表示名を入力してください');return;}
   try{
     const data=await apiFetch('/api/account/profile',{
       method:'POST',
-      body:{displayName},
+      body:{displayName,theme},
     });
     S.currentUser=data.user||S.currentUser;
     S.currentUserId=S.currentUser?.id||'';
+    applyTheme(S.currentUser?.theme||theme);
     updateAuthUI();
+    closeSettingsModal();
     showToast('表示名を更新しました');
   }catch(e){showToast('表示名の更新に失敗しました');}
 }
@@ -2168,11 +2212,27 @@ async function logout(){
   S.currentUser=null;
   S.currentUserId='';
   S.liked=new Set();
+  applyTheme(localStorage.getItem('ic_theme')||'dark');
   updateAuthUI();
   document.getElementById('authBar')?.classList.remove('open');
   await loadSharedState();
   renderMain();
   renderFilter();
+}
+function openSettingsModal(){
+  if(!isLoggedIn()) return;
+  document.getElementById('settingsDisplayName').value=S.currentUser?.displayName||S.currentUser?.username||'';
+  const theme=S.currentUser?.theme||getCurrentTheme();
+  document.querySelectorAll('input[name="themeMode"]').forEach((input)=>{input.checked=input.value===theme;});
+  document.getElementById('settingsOverlay')?.classList.add('open');
+  document.getElementById('authBar')?.classList.remove('open');
+}
+function closeSettingsModal(){
+  document.getElementById('settingsOverlay')?.classList.remove('open');
+}
+function openContactFromSettings(){
+  closeSettingsModal();
+  document.getElementById('contactOverlay').classList.add('open');
 }
 function toggleAuthBar(){
   document.getElementById('authBar').classList.toggle('open');
@@ -2234,7 +2294,7 @@ function openSim(vid) {
 function closeSimModal(){document.getElementById('simOverlay').classList.remove('open');}
 
 // overlay click outside
-['addOverlay','simOverlay','tagEditOverlay','reportOverlay'].forEach(id=>{
+['addOverlay','simOverlay','tagEditOverlay','reportOverlay','settingsOverlay'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{
     if(e.target.id===id){
       if(id==='tagEditOverlay') closeTagEditModal();
@@ -2499,6 +2559,7 @@ async function submitContact(){
 const authError=new URL(location.href).searchParams.get('authError');
 if(authError==='discord_login_failed') setTimeout(()=>showToast('Discordログインに失敗しました'),0);
 if(authError==='state_mismatch') setTimeout(()=>showToast('ログイン認証の確認に失敗しました'),0);
+if(authError==='login_not_allowed') setTimeout(()=>showToast('このDiscordアカウントはログインを許可されていません'),0);
 init();
 </script>
 

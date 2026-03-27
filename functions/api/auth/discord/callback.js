@@ -1,11 +1,14 @@
 import {
   clearAuthStateCookie,
   createSession,
+  ensureUserTables,
+  isDiscordLoginAllowed,
   makeAppUserId,
   recordLogin,
   redirect,
   getAuthStateFromRequest,
   setSessionCookie,
+  upsertUserSettings,
 } from '../../_utils.js';
 
 function discordAvatarUrl(user) {
@@ -42,6 +45,7 @@ async function fetchDiscordUser(accessToken) {
 }
 
 export async function onRequestGet(context) {
+  await ensureUserTables(context.env.DB);
   const url = new URL(context.request.url);
   const code = String(url.searchParams.get('code') || '').trim();
   const state = String(url.searchParams.get('state') || '').trim();
@@ -58,6 +62,11 @@ export async function onRequestGet(context) {
     const discordUser = await fetchDiscordUser(token.access_token);
     const discordUserId = String(discordUser.id || '').trim();
     if (!discordUserId) throw new Error('discord user id missing');
+    if (!isDiscordLoginAllowed(discordUserId, context.env)) {
+      const headers = new Headers();
+      clearAuthStateCookie(headers);
+      return redirect('/?authError=login_not_allowed', { headers });
+    }
 
     let user = await context.env.DB.prepare(
       `SELECT id, display_name FROM users WHERE discord_user_id = ?`
@@ -88,6 +97,7 @@ export async function onRequestGet(context) {
         .run();
     }
 
+    await upsertUserSettings(context.env.DB, user.id, { theme: 'dark' });
     const { sessionId, expiresAt } = await createSession(context.env.DB, user.id);
     await recordLogin(context.env.DB, user.id);
     const headers = new Headers();

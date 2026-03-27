@@ -1,4 +1,4 @@
-import { badRequest, json, readJson } from './_utils.js';
+import { badRequest, ensureUserTables, json, readJson } from './_utils.js';
 
 function getUserId(value) {
   const userId = String(value || '').trim();
@@ -6,6 +6,7 @@ function getUserId(value) {
 }
 
 export async function onRequestPost(context) {
+  await ensureUserTables(context.env.DB);
   const body = await readJson(context.request);
   const userId = getUserId(body?.userId);
   const banned = body?.banned !== false;

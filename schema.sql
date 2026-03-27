@@ -30,6 +30,13 @@ CREATE TABLE IF NOT EXISTS banned_users (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id TEXT PRIMARY KEY,
+  theme TEXT NOT NULL DEFAULT 'dark',
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS tag_votes (
   video_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
