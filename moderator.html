@@ -1320,7 +1320,26 @@ function renderUsers(){
   const stats=getStats();
   const el=document.getElementById('usersContent');
   const current=getCurrentUser();
-  const rows=[...users].sort((a,b)=>{
+  const fallbackUsers = users.length
+    ? users
+    : current
+      ? [{
+          id: current.id,
+          discordUserId: current.discordUserId||'',
+          username: current.username||'',
+          displayName: current.displayName||current.username||current.id,
+          accessCount: 0,
+          loginCount: 0,
+          taggedVideos: 0,
+          likedVideos: 0,
+          reportCount: 0,
+          lastLoginAt: current.updatedAt||current.createdAt||'',
+          createdAt: current.createdAt||'',
+          isBanned: !!current.isBanned,
+          canModerate: !!current.canModerate,
+        }]
+      : [];
+  const rows=[...fallbackUsers].sort((a,b)=>{
     if(Number(b.isBanned)!==Number(a.isBanned)) return Number(b.isBanned)-Number(a.isBanned);
     return (Date.parse(b.lastLoginAt||b.createdAt||'')||0)-(Date.parse(a.lastLoginAt||a.createdAt||'')||0);
   });
@@ -1333,6 +1352,7 @@ function renderUsers(){
     <p style="font-size:12px;color:var(--tx3);margin-bottom:16px;">
       Discordログイン済みユーザーを一覧表示します。BANしたユーザーはタグ登録・いいね・報告・表示名変更ができません。
     </p>
+    ${!users.length?'<div style="font-size:11px;color:var(--tx3);margin-bottom:12px;">ユーザー一覧APIの取得に失敗した可能性があるため、現在ログイン中のアカウントのみ表示しています。</div>':''}
     <div class="tbl-wrap">
       <table class="tbl">
         <thead><tr><th>表示名</th><th>アカウント</th><th>活動</th><th>状態</th><th>操作</th></tr></thead>
