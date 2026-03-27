@@ -1384,11 +1384,17 @@ function renderUsers(){
               <div>報告 ${user.reportCount}</div>
               <div style="font-size:10px;color:var(--tx3);">最終ログイン: ${user.lastLoginAt?new Date(user.lastLoginAt).toLocaleString('ja-JP'):'—'}</div>
             </td>
-            <td>${user.isBanned?'<span class="badge red">BAN</span>':'<span class="badge green">アクティブ</span>'}</td>
+            <td>
+              ${user.isBanned?'<span class="badge red">BAN</span>':'<span class="badge green">アクティブ</span>'}
+              ${user.canModerate?'<span class="badge yellow" style="margin-left:4px;">MOD</span>':''}
+            </td>
             <td>
               ${user.isBanned
                 ?`<button class="btn btn-sec" style="font-size:11px;padding:4px 8px;" onclick="toggleUserBan('${escH(user.id)}', false)">BAN解除</button>`
                 :`<button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="toggleUserBan('${escH(user.id)}', true)">BAN</button>`}
+              ${user.canModerate
+                ?`<button class="btn btn-sec" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="toggleUserModerator('${escH(user.id)}', false)">MOD解除</button>`
+                :`<button class="btn btn-pri" style="font-size:11px;padding:4px 8px;margin-left:4px;" onclick="toggleUserModerator('${escH(user.id)}', true)">MOD付与</button>`}
             </td>
           </tr>`).join('') || '<tr><td colspan="5" style="color:var(--tx3);">ユーザーはまだいません</td></tr>'}
         </tbody>
@@ -1407,6 +1413,19 @@ async function toggleUserBan(id, banned){
     showToast(banned?`${id} をBANしました`:`${id} のBANを解除しました`);
   }catch(e){
     showToast('ユーザー状態の更新に失敗しました');
+  }
+}
+async function toggleUserModerator(id, moderator){
+  try{
+    await apiFetch('/api/user-moderator',{
+      method:'POST',
+      body:{userId:id,moderator},
+    });
+    await syncRemoteData();
+    renderUsers();
+    showToast(moderator?`${id} にモデレーター権限を付与しました`:`${id} のモデレーター権限を解除しました`);
+  }catch(e){
+    showToast('モデレーター権限の更新に失敗しました');
   }
 }
 

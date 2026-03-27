@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS user_settings (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS moderator_users (
+  user_id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS tag_votes (
   video_id TEXT NOT NULL,
   user_id TEXT NOT NULL,

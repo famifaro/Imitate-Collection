@@ -13,6 +13,7 @@ export async function onRequestGet(context) {
       u.updated_at,
       us.theme,
       CASE WHEN b.user_id IS NULL THEN 0 ELSE 1 END AS is_banned,
+      CASE WHEN mu.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator,
       b.reason AS ban_reason,
       b.created_at AS banned_at,
       (SELECT COUNT(DISTINCT video_id) FROM tag_votes WHERE user_id = u.id) AS tagged_videos,
@@ -23,6 +24,7 @@ export async function onRequestGet(context) {
     FROM users u
     LEFT JOIN user_settings us ON us.user_id = u.id
     LEFT JOIN banned_users b ON b.user_id = u.id
+    LEFT JOIN moderator_users mu ON mu.user_id = u.id
     ORDER BY u.created_at DESC`
   ).all();
 
@@ -43,7 +45,9 @@ export async function onRequestGet(context) {
     reportCount: Number(row.report_count || 0),
     loginCount: Number(row.login_count || 0),
     lastLoginAt: row.last_login_at || '',
-    canModerate: canModerate({ id: row.id, discordUserId: row.discord_user_id }, context.env),
+    canModerate:
+      Boolean(row.is_moderator) ||
+      canModerate({ id: row.id, discordUserId: row.discord_user_id }, context.env),
   }));
 
   return json({ ok: true, users });

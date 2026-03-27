@@ -55,6 +55,12 @@ export async function ensureUserTables(db) {
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`
     ),
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS moderator_users (
+        user_id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    ),
   ]);
 }
 
@@ -226,10 +232,13 @@ export async function getSessionUser(request, env) {
       u.updated_at,
       us.theme,
       CASE WHEN b.user_id IS NULL THEN 0 ELSE 1 END AS is_banned
+      ,
+      CASE WHEN mu.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator
     FROM sessions s
     JOIN users u ON u.id = s.user_id
     LEFT JOIN user_settings us ON us.user_id = u.id
     LEFT JOIN banned_users b ON b.user_id = u.id
+    LEFT JOIN moderator_users mu ON mu.user_id = u.id
     WHERE s.id = ?`
   )
     .bind(sessionId)
@@ -253,7 +262,8 @@ export async function getSessionUser(request, env) {
       updatedAt: row.updated_at,
       theme: row.theme === 'light' ? 'light' : 'dark',
       isBanned: Boolean(row.is_banned),
-      canModerate: canModerate({ id: row.id, discordUserId: row.discord_user_id }, env),
+      canModerate:
+        Boolean(row.is_moderator) || canModerate({ id: row.id, discordUserId: row.discord_user_id }, env),
     },
   };
 }
