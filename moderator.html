@@ -423,30 +423,46 @@ async function apiFetch(path, options={}){
   if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
   return data;
 }
+async function getAuthState(){
+  const res=await fetch('/api/auth/me');
+  const data=await res.json().catch(()=>({ok:false,error:'invalid json'}));
+  if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
+  return data;
+}
 async function syncRemoteData(){
-  const [songsApi, bootstrap, reportsRes, tosDoc, privacyDoc, usersRes, statsRes, contactsRes] = await Promise.all([
-    apiFetch('/api/songs'),
-    apiFetch('/api/bootstrap'),
-    apiFetch('/api/reports'),
-    apiFetch('/api/legal-doc?key=tos'),
-    apiFetch('/api/legal-doc?key=privacy'),
-    apiFetch('/api/users'),
-    apiFetch('/api/stats'),
-    apiFetch('/api/contacts'),
-  ]);
-  REMOTE_SONGS=Array.isArray(songsApi?.songs)?songsApi.songs:[];
-  REMOTE_SONGS_UPDATED_AT=songsApi?.updatedAt||'';
-  REMOTE_TAGS=bootstrap.tags||{};
-  REMOTE_REPORTS=reportsRes.reports||[];
-  CURRENT_USER=bootstrap.user||null;
-  applyTheme(CURRENT_USER?.theme||localStorage.getItem('ic_theme')||'dark');
-  REMOTE_TOS_HTML=String(tosDoc?.content||'');
-  REMOTE_TOS_UPDATED_AT=String(tosDoc?.updatedAt||'');
-  REMOTE_PRIVACY_HTML=String(privacyDoc?.content||'');
-  REMOTE_PRIVACY_UPDATED_AT=String(privacyDoc?.updatedAt||'');
-  REMOTE_USERS=usersRes.users||[];
-  REMOTE_STATS=statsRes||null;
-  REMOTE_CONTACTS=contactsRes.contacts||[];
+  const [songsApi, bootstrap, reportsRes, tosDoc, privacyDoc, usersRes, statsRes, contactsRes] =
+    await Promise.allSettled([
+      apiFetch('/api/songs'),
+      apiFetch('/api/bootstrap'),
+      apiFetch('/api/reports'),
+      apiFetch('/api/legal-doc?key=tos'),
+      apiFetch('/api/legal-doc?key=privacy'),
+      apiFetch('/api/users'),
+      apiFetch('/api/stats'),
+      apiFetch('/api/contacts'),
+    ]);
+
+  if(bootstrap.status==='fulfilled'){
+    REMOTE_TAGS=bootstrap.value.tags||{};
+    CURRENT_USER=bootstrap.value.user||CURRENT_USER;
+    applyTheme(CURRENT_USER?.theme||localStorage.getItem('ic_theme')||'dark');
+  }
+  if(songsApi.status==='fulfilled'){
+    REMOTE_SONGS=Array.isArray(songsApi.value?.songs)?songsApi.value.songs:[];
+    REMOTE_SONGS_UPDATED_AT=songsApi.value?.updatedAt||'';
+  }
+  if(reportsRes.status==='fulfilled') REMOTE_REPORTS=reportsRes.value.reports||[];
+  if(tosDoc.status==='fulfilled'){
+    REMOTE_TOS_HTML=String(tosDoc.value?.content||'');
+    REMOTE_TOS_UPDATED_AT=String(tosDoc.value?.updatedAt||'');
+  }
+  if(privacyDoc.status==='fulfilled'){
+    REMOTE_PRIVACY_HTML=String(privacyDoc.value?.content||'');
+    REMOTE_PRIVACY_UPDATED_AT=String(privacyDoc.value?.updatedAt||'');
+  }
+  if(usersRes.status==='fulfilled') REMOTE_USERS=usersRes.value.users||[];
+  if(statsRes.status==='fulfilled') REMOTE_STATS=statsRes.value||null;
+  if(contactsRes.status==='fulfilled') REMOTE_CONTACTS=contactsRes.value.contacts||[];
 }
 
 function renderSongCacheStatus(updatedAt){
@@ -1678,9 +1694,11 @@ function removeAdvTag(idx){
 
 async function init(){
   try{
-    await syncRemoteData();
+    const auth=await getAuthState();
+    CURRENT_USER=auth.user||null;
+    applyTheme(CURRENT_USER?.theme||localStorage.getItem('ic_theme')||'dark');
   }catch(e){
-    document.getElementById('lockErr').textContent='ログイン状態の確認に失敗しました';
+    document.getElementById('lockErr').textContent='Discordログイン状態を確認できませんでした';
     return;
   }
   if(!getCurrentUser()){
@@ -1694,6 +1712,11 @@ async function init(){
     document.getElementById('app').style.display='none';
     document.getElementById('lockErr').textContent='このアカウントにはモデレーター権限がありません';
     return;
+  }
+  try{
+    await syncRemoteData();
+  }catch(e){
+    showToast('一部の管理データ取得に失敗しました');
   }
   document.getElementById('lockScreen').style.display='none';
   document.getElementById('app').style.display='flex';
