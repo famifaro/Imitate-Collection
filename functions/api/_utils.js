@@ -11,6 +11,7 @@ const SESSION_COOKIE = 'ic_session';
 const AUTH_STATE_COOKIE = 'ic_auth_state';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const AUTH_STATE_TTL_MS = 1000 * 60 * 10;
+const MANUAL_ALLOWED_APP_USER_IDS = new Set(['usr_6b5f26720f984d50b0a8']);
 
 export async function ensureUserTables(db) {
   await db.batch([
@@ -114,6 +115,12 @@ export function isDiscordLoginAllowed(discordUserId, env) {
   const allowed = parseIdList(env.DISCORD_ALLOWED_USER_IDS);
   if (!allowed.size) return true;
   return allowed.has(String(discordUserId || '').trim());
+}
+
+export function isAppUserLoginAllowed(appUserId, env) {
+  const allowed = parseIdList(env.DISCORD_ALLOWED_APP_USER_IDS);
+  if (MANUAL_ALLOWED_APP_USER_IDS.has(String(appUserId || '').trim())) return true;
+  return allowed.has(String(appUserId || '').trim());
 }
 
 export function canModerate(discordUserId, env) {

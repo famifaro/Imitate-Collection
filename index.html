@@ -941,7 +941,7 @@ function getMyAdvTags(vid){
   return S.myAdvTags[vid]||[];
 }
 function getEditableTagValues(vid){
-  return getMyTag(vid)||getTag(vid)||null;
+  return getTag(vid)||null;
 }
 function applyTheme(theme){
   const mode=theme==='light'?'light':'dark';
@@ -1619,7 +1619,7 @@ function updateCardTag(vid, tag) {
     ${TAG_DIMS.map(d=>`
       <div class="ctp-row">
         <span class="ctp-label" style="color:${d.color}">${escH(d.label)}</span>
-        <input type="range" class="ctp-slider" min="0" max="10" value="${initVals[d.key]}"
+        <input type="range" class="ctp-slider" min="0" max="20" value="${initVals[d.key]}"
           style="--accent-color:${d.color}"
           data-vid="${vid}" data-dim="${d.key}"
           oninput="onTagSlider(this)">
@@ -1904,7 +1904,6 @@ function openTagEditModal(vid){
   currentTagEditVid=vid;
   const song=S.songs.find(s=>s.videoId===vid)||{};
   const tag=getTag(vid);
-  const myTag=getMyTag(vid);
   const meta=S.ytMeta[vid]||{};
   const title=(song.title&&song.title.trim()?song.title:null)||meta.title||'(タイトル不明)';
   const artist=meta.channelName||song.artist||'';
@@ -1915,14 +1914,10 @@ function openTagEditModal(vid){
   document.getElementById('tagEditArtist').textContent=artist;
   document.getElementById('tagEditSub').textContent=artist+(song.category?` • ${song.category}`:'');
   document.getElementById('tagEditNote').textContent=
-    myTag
-      ? `あなたの保存値 / 全体 ${tag?.votes||0}件${isEdit?' (編集中)':''}`
-      : tag&&tag.votes
-        ? `${tag.votes}件の保存データの平均値${isEdit?' (編集中)':''}`
-        : '保存済みタグなし';
+    tag&&tag.votes ? `${tag.votes}件の保存データの平均値${isEdit?' (編集中)':''}` : '保存済みタグなし';
 
   tagEditPending={};
-  TAG_DIMS.forEach(d=>{tagEditPending[d.key]=myTag?(myTag[d.key]??10):(tag?(tag[d.key]??10):10);});
+  TAG_DIMS.forEach(d=>{tagEditPending[d.key]=tag?(tag[d.key]??10):10;});
 
   document.getElementById('tagEditSliders').innerHTML=TAG_DIMS.map(d=>`
     <div style="margin-bottom:10px;">
@@ -1973,7 +1968,7 @@ function openAdvModal(vid){
 
 function renderAdvChips(bodyId,vid){
   const tag=getTag(vid);
-  const sel=isLoggedIn()&&getMyAdvTags(vid).length ? getMyAdvTags(vid) : (tag?.adv||[]);
+  const sel=tag?.adv||[];
   const body=document.getElementById(bodyId);
   if(!body)return;
   const isEdit=S.sessionVoted.has('adv_'+vid);
