@@ -2,8 +2,6 @@ import {
   clearAuthStateCookie,
   createSession,
   ensureUserTables,
-  isAppUserLoginAllowed,
-  isDiscordLoginAllowed,
   makeAppUserId,
   recordLogin,
   redirect,
@@ -69,12 +67,6 @@ export async function onRequestGet(context) {
     )
       .bind(discordUserId)
       .first();
-
-    if (!isDiscordLoginAllowed(discordUserId, context.env) && !isAppUserLoginAllowed(user?.id, context.env)) {
-      const headers = new Headers();
-      clearAuthStateCookie(headers);
-      return redirect('/?authError=login_not_allowed', { headers });
-    }
 
     const username = String(discordUser.username || '').trim().slice(0, 40);
     const displayName = pickDisplayName(discordUser);

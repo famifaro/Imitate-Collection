@@ -1692,6 +1692,13 @@ async function init(){
     }catch(e){
       showToast('共有データの取得に失敗しました');
     }
+    if(!getCurrentUser()?.canModerate){
+      document.getElementById('app').style.display='none';
+      document.getElementById('lockScreen').style.display='flex';
+      document.getElementById('lockErr').textContent='このアカウントにはモデレーター権限がありません';
+      sessionStorage.removeItem(SESSION_KEY);
+      return;
+    }
     renderDashboard();
     const current=getCurrentUser();
     const el=document.getElementById('modUserId');

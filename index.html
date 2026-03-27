@@ -818,7 +818,6 @@ let S = {
   currentPlayerVid: null,
   currentUserId: '',
   currentUser: null,
-  loginRestricted: false,
 };
 
 // ══════════════════════════════════════════
@@ -960,7 +959,6 @@ async function loadSharedState(){
   S.myAdvTags=data.myAdvTags||{};
   S.currentUser=data.user||null;
   S.currentUserId=data.user?.id||'';
-  S.loginRestricted=!!data.loginRestricted;
   applyTheme(data.user?.theme||getCurrentTheme());
   updateAuthUI();
 }
@@ -2143,7 +2141,7 @@ function updateAuthUI(){
   if(!isLoggedIn()){
     bar.innerHTML=`
       <div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:6px;">アカウント</div>
-      <div style="font-size:10px;color:var(--tx3);line-height:1.6;margin-bottom:10px;">未ログインでも閲覧はできます。<br>タグ登録と報告はログイン後に利用できます。${S.loginRestricted?'<br>Discordログインは許可ユーザーのみ利用できます。':''}</div>
+      <div style="font-size:10px;color:var(--tx3);line-height:1.6;margin-bottom:10px;">未ログインでも閲覧はできます。<br>タグ登録と報告はログイン後に利用できます。</div>
       <a class="btn-pri" href="/api/auth/discord/start" style="display:block;text-align:center;text-decoration:none;">Discordでログイン</a>
     `;
     return;
@@ -2166,7 +2164,6 @@ async function initUser(){
     const data=await apiFetch('/api/auth/me');
     S.currentUser=data.user||null;
     S.currentUserId=data.user?.id||'';
-    S.loginRestricted=!!data.loginRestricted;
     applyTheme(data.user?.theme||getCurrentTheme());
   }catch(e){
     S.currentUser=null;
@@ -2554,7 +2551,6 @@ async function submitContact(){
 const authError=new URL(location.href).searchParams.get('authError');
 if(authError==='discord_login_failed') setTimeout(()=>showToast('Discordログインに失敗しました'),0);
 if(authError==='state_mismatch') setTimeout(()=>showToast('ログイン認証の確認に失敗しました'),0);
-if(authError==='login_not_allowed') setTimeout(()=>showToast('このDiscordアカウントはログインを許可されていません'),0);
 init();
 </script>
 

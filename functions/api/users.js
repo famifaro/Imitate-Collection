@@ -43,7 +43,7 @@ export async function onRequestGet(context) {
     reportCount: Number(row.report_count || 0),
     loginCount: Number(row.login_count || 0),
     lastLoginAt: row.last_login_at || '',
-    canModerate: canModerate(row.discord_user_id, context.env),
+    canModerate: canModerate({ id: row.id, discordUserId: row.discord_user_id }, context.env),
   }));
 
   return json({ ok: true, users });

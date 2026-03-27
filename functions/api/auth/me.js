@@ -7,6 +7,5 @@ export async function onRequestGet(context) {
     ok: true,
     loggedIn: !!session,
     user: session?.user || null,
-    loginRestricted: String(context.env.DISCORD_ALLOWED_USER_IDS || '').trim().length > 0,
   });
 }

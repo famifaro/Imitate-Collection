@@ -11,7 +11,7 @@ const SESSION_COOKIE = 'ic_session';
 const AUTH_STATE_COOKIE = 'ic_auth_state';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const AUTH_STATE_TTL_MS = 1000 * 60 * 10;
-const MANUAL_ALLOWED_APP_USER_IDS = new Set(['usr_6b5f26720f984d50b0a8']);
+const MANUAL_MODERATOR_APP_USER_IDS = new Set(['usr_6b5f26720f984d50b0a8']);
 
 export async function ensureUserTables(db) {
   await db.batch([
@@ -111,22 +111,15 @@ function parseIdList(raw) {
   );
 }
 
-export function isDiscordLoginAllowed(discordUserId, env) {
-  const allowed = parseIdList(env.DISCORD_ALLOWED_USER_IDS);
-  if (!allowed.size) return true;
-  return allowed.has(String(discordUserId || '').trim());
-}
-
-export function isAppUserLoginAllowed(appUserId, env) {
-  const allowed = parseIdList(env.DISCORD_ALLOWED_APP_USER_IDS);
-  if (MANUAL_ALLOWED_APP_USER_IDS.has(String(appUserId || '').trim())) return true;
-  return allowed.has(String(appUserId || '').trim());
-}
-
-export function canModerate(discordUserId, env) {
-  const mods = parseIdList(env.MODERATOR_DISCORD_USER_IDS || env.DISCORD_ALLOWED_USER_IDS);
-  if (!mods.size) return false;
-  return mods.has(String(discordUserId || '').trim());
+export function canModerate(userLike, env) {
+  const discordMods = parseIdList(env.MODERATOR_DISCORD_USER_IDS);
+  const appMods = parseIdList(env.MODERATOR_APP_USER_IDS);
+  const appUserId = String(userLike?.id || '').trim();
+  const discordUserId = String(userLike?.discordUserId || userLike?.discord_user_id || '').trim();
+  if (MANUAL_MODERATOR_APP_USER_IDS.has(appUserId)) return true;
+  if (appMods.has(appUserId)) return true;
+  if (discordMods.has(discordUserId)) return true;
+  return false;
 }
 
 function getCookieMap(request) {
@@ -260,7 +253,7 @@ export async function getSessionUser(request, env) {
       updatedAt: row.updated_at,
       theme: row.theme === 'light' ? 'light' : 'dark',
       isBanned: Boolean(row.is_banned),
-      canModerate: canModerate(row.discord_user_id, env),
+      canModerate: canModerate({ id: row.id, discordUserId: row.discord_user_id }, env),
     },
   };
 }
