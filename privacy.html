@@ -88,6 +88,15 @@ async function syncThemeFromAuth(){
     const res=await fetch('/api/auth/me');
     const data=await res.json();
     if(res.ok&&data.user?.theme) applyTheme(data.user.theme);
+    if(res.ok&&data.user){
+      try{
+        await fetch('/api/access-log',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({path:'/privacy.html'}),
+        });
+      }catch(e){}
+    }
   }catch(e){}
 }
 loadPrivacyDoc();

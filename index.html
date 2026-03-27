@@ -2497,6 +2497,14 @@ function showToast(msg){
 async function init(){
   load();
   await initUser();
+  if(isLoggedIn()){
+    try{
+      await apiFetch('/api/access-log',{
+        method:'POST',
+        body:{path:location.pathname||'/'},
+      });
+    }catch(e){}
+  }
   // show skeletons
   const g=document.getElementById('mainGrid');
   g.innerHTML='';

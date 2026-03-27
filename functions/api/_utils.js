@@ -62,6 +62,14 @@ export async function ensureUserTables(db) {
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`
     ),
+    db.prepare(
+      `CREATE TABLE IF NOT EXISTS page_access_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        path TEXT NOT NULL DEFAULT '/',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    ),
   ]);
 }
 
@@ -205,6 +213,12 @@ export async function upsertUserSettings(db, userId, patch = {}) {
 
 export async function recordLogin(db, userId) {
   await db.prepare(`INSERT INTO login_events (user_id) VALUES (?)`).bind(userId).run();
+}
+
+export async function recordPageAccessEvent(db, userId, path) {
+  await db.prepare(`INSERT INTO page_access_events (user_id, path) VALUES (?, ?)`)
+    .bind(userId, String(path || '/').slice(0, 200))
+    .run();
 }
 
 export function setSessionCookie(headers, sessionId, expiresAt) {

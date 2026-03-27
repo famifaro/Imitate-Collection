@@ -20,6 +20,7 @@ export async function onRequestGet(context) {
       (SELECT COUNT(DISTINCT video_id) FROM likes WHERE user_id = u.id) AS liked_videos,
       (SELECT COUNT(*) FROM reports WHERE user_id = u.id) AS report_count,
       (SELECT COUNT(*) FROM login_events WHERE user_id = u.id) AS login_count,
+      (SELECT COUNT(*) FROM page_access_events WHERE user_id = u.id) AS access_count,
       (SELECT MAX(created_at) FROM login_events WHERE user_id = u.id) AS last_login_at
     FROM users u
     LEFT JOIN user_settings us ON us.user_id = u.id
@@ -44,6 +45,7 @@ export async function onRequestGet(context) {
     likedVideos: Number(row.liked_videos || 0),
     reportCount: Number(row.report_count || 0),
     loginCount: Number(row.login_count || 0),
+    accessCount: Number(row.access_count || 0),
     lastLoginAt: row.last_login_at || '',
     canModerate:
       Boolean(row.is_moderator) ||

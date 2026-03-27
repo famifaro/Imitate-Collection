@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS moderator_users (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS page_access_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  path TEXT NOT NULL DEFAULT '/',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS tag_votes (
   video_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
