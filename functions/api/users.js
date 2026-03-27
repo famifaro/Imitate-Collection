@@ -47,7 +47,7 @@ export async function onRequestGet(context) {
     lastLoginAt: row.last_login_at || '',
     canModerate:
       Boolean(row.is_moderator) ||
-      canModerate({ id: row.id, discordUserId: row.discord_user_id }, context.env),
+      canModerate({ id: row.id, discordUserId: row.discord_user_id, username: row.username }, context.env),
   }));
 
   return json({ ok: true, users });

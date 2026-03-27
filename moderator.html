@@ -143,10 +143,9 @@ button{cursor:pointer;font-family:inherit;border:none;}
   <div class="lock-box">
     <div class="lock-logo">⚙ Mod Panel</div>
     <div class="lock-sub">Imitate Collection</div>
-    <input class="lock-input" type="password" id="lockInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryUnlock()">
-    <button class="lock-btn" onclick="tryUnlock()">アクセスする</button>
+    <a class="lock-btn" href="/api/auth/discord/start" id="modLoginBtn" style="display:block;text-decoration:none;">Discordでログイン</a>
     <div class="lock-err" id="lockErr"></div>
-    <div style="font-size:10px;color:var(--tx3);margin-top:14px;">Discord認証は準備中。現在はパスワードで管理。</div>
+    <div style="font-size:10px;color:var(--tx3);margin-top:14px;">Discordログイン済みかつモデレーター権限があるアカウントのみアクセスできます。</div>
   </div>
 </div>
 
@@ -331,10 +330,6 @@ button{cursor:pointer;font-family:inherit;border:none;}
         <div style="font-size:10px;color:var(--tx3);margin-top:4px;">設定するとタイトル・再生数が自動取得されます</div>
       </div>
       <div class="form-group">
-        <label class="form-label">モデレーターパスワード変更</label>
-        <input class="form-input" id="newPwField" type="password" placeholder="新しいパスワード" style="width:100%;max-width:300px;">
-      </div>
-      <div class="form-group">
         <label class="form-label">年表更新トークン</label>
         <input class="form-input" id="adminTokenField" type="password" placeholder="Cloudflare の ADMIN_TOKEN" style="width:100%;max-width:400px;">
         <div style="font-size:10px;color:var(--tx3);margin-top:4px;">年表キャッシュを手動更新するときだけ使います</div>
@@ -388,33 +383,12 @@ button{cursor:pointer;font-family:inherit;border:none;}
 // ══════════════════════════════
 //  AUTH
 // ══════════════════════════════
-const MOD_PW_KEY = 'ic_mod_pw';
-const SESSION_KEY = 'ic_mod_session';
 const ADMIN_TOKEN_KEY = 'ic_admin_token';
-const DEFAULT_PW = 'imitate_sbt132_imicom';
-
-function getStoredPw(){ return localStorage.getItem(MOD_PW_KEY) || DEFAULT_PW; }
-
-function tryUnlock(){
-  const v = document.getElementById('lockInput').value;
-  if(v === getStoredPw()){
-    sessionStorage.setItem(SESSION_KEY,'1');
-    document.getElementById('lockScreen').style.display='none';
-    document.getElementById('app').style.display='flex';
-    init();
-  } else {
-    document.getElementById('lockErr').textContent='パスワードが違います';
-    document.getElementById('lockInput').value='';
-  }
-}
-function logout(){
-  sessionStorage.removeItem(SESSION_KEY);
-  location.reload();
-}
-// 自動ログイン（セッション継続）
-if(sessionStorage.getItem(SESSION_KEY)==='1'){
-  document.getElementById('lockScreen').style.display='none';
-  document.getElementById('app').style.display='flex';
+async function logout(){
+  try{
+    await fetch('/api/auth/logout',{method:'POST'});
+  }catch(e){}
+  location.href='index.html';
 }
 
 // ══════════════════════════════
@@ -1470,10 +1444,8 @@ async function savePrivacy(){
 }
 function saveSettings(){
   const key=document.getElementById('apiKeyField').value.trim();
-  const pw=document.getElementById('newPwField').value.trim();
   const adminToken=document.getElementById('adminTokenField').value.trim();
   if(key)localStorage.setItem('ic_apikey',key);
-  if(pw)localStorage.setItem(MOD_PW_KEY,pw);
   if(adminToken)localStorage.setItem(ADMIN_TOKEN_KEY,adminToken);
   showToast('設定を保存しました');
 }
@@ -1705,29 +1677,35 @@ function removeAdvTag(idx){
 }
 
 async function init(){
-  if(sessionStorage.getItem(SESSION_KEY)==='1'){
-    try{
-      await syncRemoteData();
-    }catch(e){
-      showToast('共有データの取得に失敗しました');
-    }
-    if(!getCurrentUser()?.canModerate){
-      document.getElementById('app').style.display='none';
-      document.getElementById('lockScreen').style.display='flex';
-      document.getElementById('lockErr').textContent='このアカウントにはモデレーター権限がありません';
-      sessionStorage.removeItem(SESSION_KEY);
-      return;
-    }
-    renderDashboard();
-    const current=getCurrentUser();
-    const el=document.getElementById('modUserId');
-    const ic=document.getElementById('modUserIcon');
-    const label=current?.displayName||current?.username||'未ログイン';
-    if(el)el.textContent=label.length>14?label.slice(0,14)+'…':label;
-    if(ic)ic.textContent=(label||'?').slice(0,1).toUpperCase();
+  try{
+    await syncRemoteData();
+  }catch(e){
+    document.getElementById('lockErr').textContent='ログイン状態の確認に失敗しました';
+    return;
   }
+  if(!getCurrentUser()){
+    document.getElementById('lockScreen').style.display='flex';
+    document.getElementById('app').style.display='none';
+    document.getElementById('lockErr').textContent='モデレーターページの利用にはDiscordログインが必要です';
+    return;
+  }
+  if(!getCurrentUser()?.canModerate){
+    document.getElementById('lockScreen').style.display='flex';
+    document.getElementById('app').style.display='none';
+    document.getElementById('lockErr').textContent='このアカウントにはモデレーター権限がありません';
+    return;
+  }
+  document.getElementById('lockScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  renderDashboard();
+  const current=getCurrentUser();
+  const el=document.getElementById('modUserId');
+  const ic=document.getElementById('modUserIcon');
+  const label=current?.displayName||current?.username||'未ログイン';
+  if(el)el.textContent=label.length>14?label.slice(0,14)+'…':label;
+  if(ic)ic.textContent=(label||'?').slice(0,1).toUpperCase();
 }
-if(sessionStorage.getItem(SESSION_KEY)==='1') init();
+init();
 </script>
 </body>
 </html>

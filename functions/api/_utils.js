@@ -12,6 +12,7 @@ const AUTH_STATE_COOKIE = 'ic_auth_state';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const AUTH_STATE_TTL_MS = 1000 * 60 * 10;
 const MANUAL_MODERATOR_APP_USER_IDS = new Set(['usr_6b5f26720f984d50b0a8']);
+const MANUAL_MODERATOR_DISCORD_USERNAMES = new Set(['fami_faro']);
 
 export async function ensureUserTables(db) {
   await db.batch([
@@ -119,12 +120,16 @@ function parseIdList(raw) {
 
 export function canModerate(userLike, env) {
   const discordMods = parseIdList(env.MODERATOR_DISCORD_USER_IDS);
+  const discordNames = parseIdList(env.MODERATOR_DISCORD_USERNAMES);
   const appMods = parseIdList(env.MODERATOR_APP_USER_IDS);
   const appUserId = String(userLike?.id || '').trim();
   const discordUserId = String(userLike?.discordUserId || userLike?.discord_user_id || '').trim();
+  const discordUsername = String(userLike?.username || '').trim();
   if (MANUAL_MODERATOR_APP_USER_IDS.has(appUserId)) return true;
+  if (MANUAL_MODERATOR_DISCORD_USERNAMES.has(discordUsername)) return true;
   if (appMods.has(appUserId)) return true;
   if (discordMods.has(discordUserId)) return true;
+  if (discordNames.has(discordUsername)) return true;
   return false;
 }
 
@@ -263,7 +268,8 @@ export async function getSessionUser(request, env) {
       theme: row.theme === 'light' ? 'light' : 'dark',
       isBanned: Boolean(row.is_banned),
       canModerate:
-        Boolean(row.is_moderator) || canModerate({ id: row.id, discordUserId: row.discord_user_id }, env),
+        Boolean(row.is_moderator) ||
+        canModerate({ id: row.id, discordUserId: row.discord_user_id, username: row.username }, env),
     },
   };
 }
