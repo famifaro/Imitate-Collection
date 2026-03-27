@@ -45,7 +45,7 @@ button{cursor:pointer;font-family:inherit;border:none;}
 .sb-item.active{background:rgba(26,110,232,.15);color:var(--ac2);}
 .sb-ic{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
 
-.content{margin-top:52px;margin-left:220px;padding:24px;min-height:calc(100vh - 52px);}
+.content{margin-top:52px;margin-left:220px;padding:24px 18px 36px 24px;min-height:calc(100vh - 52px);width:calc(100vw - 220px);}
 
 /* ── PANELS ── */
 .panel{display:none;}
@@ -70,7 +70,7 @@ button{cursor:pointer;font-family:inherit;border:none;}
 .stat-label{font-size:11px;color:var(--tx3);margin-top:2px;}
 
 /* ── TABLE ── */
-.tbl-wrap{background:var(--bg2);border:1px solid var(--br);border-radius:10px;overflow:hidden;}
+.tbl-wrap{background:var(--bg2);border:1px solid var(--br);border-radius:10px;overflow:auto;}
 .tbl{width:100%;border-collapse:collapse;}
 .tbl th{background:var(--s1);padding:10px 12px;font-size:11px;font-weight:600;color:var(--tx3);text-align:left;font-family:'Space Mono',monospace;letter-spacing:.08em;border-bottom:1px solid var(--br);}
 .tbl td{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--br);vertical-align:middle;}
@@ -121,7 +121,7 @@ button{cursor:pointer;font-family:inherit;border:none;}
   .sidebar{width:60px;}
   .sb-section,.sb-item span{display:none;}
   .sb-item{justify-content:center;padding:10px;}
-  .content{margin-left:60px;padding:14px;}
+  .content{margin-left:60px;padding:14px;width:calc(100vw - 60px);}
   .stats-grid{grid-template-columns:repeat(2,1fr);}
 }
 </style>
@@ -248,7 +248,7 @@ button{cursor:pointer;font-family:inherit;border:none;}
     <!-- USERS -->
     <div class="panel" id="panel-users">
       <div class="panel-title">ユーザー管理</div>
-      <div class="panel-sub">匿名ユーザーの活動履歴・利用制限を管理します</div>
+      <div class="panel-sub">ログイン済みユーザーと、過去の活動ログに残っているユーザーIDを管理します</div>
       <div id="usersContent"></div>
     </div>
 
@@ -1350,11 +1350,11 @@ function renderUsers(){
       <div class="stat-card"><div class="stat-num">${stats?.summary?.monthlyActiveUsers||0}</div><div class="stat-label">月間ログインユーザー</div></div>
     </div>
     <p style="font-size:12px;color:var(--tx3);margin-bottom:16px;">
-      Discordログイン済みユーザーを一覧表示します。BANしたユーザーはタグ登録・いいね・報告・表示名変更ができません。
+      Discordログイン済みユーザーに加えて、タグ投票・報告・アクセス記録など過去の活動ログに残っているユーザーIDも一覧表示します。BANしたユーザーはタグ登録・いいね・報告・表示名変更ができません。
     </p>
     ${!users.length?'<div style="font-size:11px;color:var(--tx3);margin-bottom:12px;">ユーザー一覧APIの取得に失敗した可能性があるため、現在ログイン中のアカウントのみ表示しています。</div>':''}
     <div class="tbl-wrap">
-      <table class="tbl">
+      <table class="tbl" style="min-width:1120px;">
         <thead><tr><th>表示名</th><th>アカウント</th><th>活動</th><th>状態</th><th>操作</th></tr></thead>
         <tbody>
           ${rows.map(user=>`<tr>
