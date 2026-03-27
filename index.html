@@ -629,10 +629,6 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
     </div>
     <div class="modal-body">
       <div class="report-group">
-        <label class="report-label">報告者の名前</label>
-        <input class="fld-input" id="reportName" type="text" placeholder="ニックネームでもOK">
-      </div>
-      <div class="report-group">
         <label class="report-label">連絡先 (任意)</label>
         <input class="fld-input" id="reportContact" type="text" placeholder="X / Discord / メール">
       </div>
@@ -766,6 +762,8 @@ let S = {
   tags: {},         // {videoId: {mood,rhythm,melody,origin,votes,adv:[],advVotes:0}}
   likes: {},        // {videoId: count}
   liked: new Set(), // videoIds this user has liked
+  myTagVotes: {},   // {videoId: {mood,rhythm,melody,origin}}
+  myAdvTags: {},    // {videoId: [tag]}
   ytMeta: {},       // {videoId: {views,duration,channelIcon,title,channelName}}
   apiKey: '',
   categories: [],   // unique categories from sheet
@@ -783,9 +781,11 @@ let S = {
   openTagPanel: null, // videoId of open tag panel
   currentAdvId: null,
   pendingTagValues: {},
+  pendingRequests: new Set(),
   randomHistory: [], // used videoIds in current random session
   currentPlayerVid: null,
   currentUserId: '',
+  currentUser: null,
 };
 
 // ══════════════════════════════════════════
@@ -796,6 +796,8 @@ function load() {
   S.tags={};
   S.likes={};
   S.liked=new Set();
+  S.myTagVotes={};
+  S.myAdvTags={};
   S.apiKey = localStorage.getItem('ic_apikey')||'';
   
   
@@ -899,12 +901,25 @@ function applySongState(videoId, tag, likeCount, liked){
     else S.liked.delete(videoId);
   }
 }
+function getMyTag(vid){
+  return S.myTagVotes[vid]||null;
+}
+function getMyAdvTags(vid){
+  return S.myAdvTags[vid]||[];
+}
+function getEditableTagValues(vid){
+  return getMyTag(vid)||getTag(vid)||null;
+}
 async function loadSharedState(){
-  if(!S.currentUserId)return;
-  const data=await apiFetch(`/api/bootstrap?userId=${encodeURIComponent(S.currentUserId)}`);
+  const data=await apiFetch('/api/bootstrap');
   S.tags=data.tags||{};
   S.likes=data.likes||{};
   S.liked=new Set(data.liked||[]);
+  S.myTagVotes=data.myTagVotes||{};
+  S.myAdvTags=data.myAdvTags||{};
+  S.currentUser=data.user||null;
+  S.currentUserId=data.user?.id||'';
+  updateAuthUI();
 }
 async function fetchServerSongs(){
   const data=await apiFetch('/api/songs');
@@ -1272,23 +1287,41 @@ function shuffle(arr) {
 function getTag(vid){return S.tags[vid]||null;}
 
 async function saveTag(vid, values) {
+  if(!requireLogin('タグ登録')) throw new Error('login required');
+  const reqKey=`tag:${vid}`;
+  if(S.pendingRequests.has(reqKey)) throw new Error('save in progress');
+  S.pendingRequests.add(reqKey);
+  try{
   const data=await apiFetch('/api/tag',{
     method:'POST',
-    body:{userId:S.currentUserId,videoId:vid,...values},
+    body:{videoId:vid,...values},
   });
   applySongState(vid,data.tag);
+  S.myTagVotes[vid]={...values};
   S.sessionVoted.add(vid);
   return data.tag;
+  }finally{
+    S.pendingRequests.delete(reqKey);
+  }
 }
 
 async function saveAdvTags(vid, selTags) {
+  if(!requireLogin('高度なタグ登録')) throw new Error('login required');
+  const reqKey=`adv:${vid}`;
+  if(S.pendingRequests.has(reqKey)) throw new Error('save in progress');
+  S.pendingRequests.add(reqKey);
+  try{
   const data=await apiFetch('/api/adv-tags',{
     method:'POST',
-    body:{userId:S.currentUserId,videoId:vid,tags:selTags},
+    body:{videoId:vid,tags:selTags},
   });
   applySongState(vid,data.tag);
+  S.myAdvTags[vid]=[...selTags];
   S.sessionVoted.add('adv_'+vid);
   return data.tag;
+  }finally{
+    S.pendingRequests.delete(reqKey);
+  }
 }
 function getAdvRate(vid,tag){const v=S.tags[vid]?.advVotes?.[tag];if(!v||!v.total)return 0;return Math.round(v.yes/v.total*100);}
 
@@ -1371,15 +1404,16 @@ function makeCard(song) {
   const hoverSliders=document.createElement('div');
   hoverSliders.className='card-hover-sliders';
   hoverSliders.id=`hs-${song.videoId}`;
+  const editableTag=getEditableTagValues(song.videoId);
   hoverSliders.innerHTML=`
 ${TAG_DIMS.map(d=>`
       <div class="chs-row">
         <span class="chs-lbl" style="color:${d.color}">${escH(d.label)}</span>
-        <input type="range" class="chs-slider" min="0" max="20" value="${tag?(tag[d.key]??10):10}"
+        <input type="range" class="chs-slider" min="0" max="20" value="${editableTag?(editableTag[d.key]??10):10}"
           style="--accent-color:${d.color}"
           data-vid="${song.videoId}" data-dim="${d.key}"
           oninput="onHoverSlider(this)" onclick="event.stopPropagation()">
-        <span class="chs-val" id="hsv-${song.videoId}-${d.key}">${tag?(tag[d.key]??10):10}</span>
+        <span class="chs-val" id="hsv-${song.videoId}-${d.key}">${editableTag?(editableTag[d.key]??10):10}</span>
       </div>`).join('')}
     <button class="chs-save-btn" onclick="event.stopPropagation();saveHoverTag('${song.videoId}')">保存する</button>
   `;
@@ -1531,7 +1565,8 @@ function updateCardTag(vid, tag) {
 
   // build tag panel sliders
   const initVals={};
-  TAG_DIMS.forEach(d=>{initVals[d.key]=tag?(tag[d.key]??10):10;});
+  const editableTag=getEditableTagValues(vid);
+  TAG_DIMS.forEach(d=>{initVals[d.key]=editableTag?(editableTag[d.key]??10):10;});
 
   tp.innerHTML=`
     <div class="ctp-head">
@@ -1588,7 +1623,7 @@ function toggleTagPanel(vid) {
     tp.classList.add('open');
     S.openTagPanel=vid;
     // init pending values
-    const tag=getTag(vid);
+    const tag=getEditableTagValues(vid);
     S.pendingTagValues[vid]={};
     TAG_DIMS.forEach(d=>{S.pendingTagValues[vid][d.key]=tag?(tag[d.key]??10):10;});
   }
@@ -1826,6 +1861,7 @@ function openTagEditModal(vid){
   currentTagEditVid=vid;
   const song=S.songs.find(s=>s.videoId===vid)||{};
   const tag=getTag(vid);
+  const myTag=getMyTag(vid);
   const meta=S.ytMeta[vid]||{};
   const title=(song.title&&song.title.trim()?song.title:null)||meta.title||'(タイトル不明)';
   const artist=meta.channelName||song.artist||'';
@@ -1836,10 +1872,14 @@ function openTagEditModal(vid){
   document.getElementById('tagEditArtist').textContent=artist;
   document.getElementById('tagEditSub').textContent=artist+(song.category?` • ${song.category}`:'');
   document.getElementById('tagEditNote').textContent=
-    tag&&tag.votes ? `${tag.votes}件の保存データの平均値${isEdit?' (編集中)':''}` : '保存済みタグなし';
+    myTag
+      ? `あなたの保存値 / 全体 ${tag?.votes||0}件${isEdit?' (編集中)':''}`
+      : tag&&tag.votes
+        ? `${tag.votes}件の保存データの平均値${isEdit?' (編集中)':''}`
+        : '保存済みタグなし';
 
   tagEditPending={};
-  TAG_DIMS.forEach(d=>{tagEditPending[d.key]=tag?(tag[d.key]??10):10;});
+  TAG_DIMS.forEach(d=>{tagEditPending[d.key]=myTag?(myTag[d.key]??10):(tag?(tag[d.key]??10):10);});
 
   document.getElementById('tagEditSliders').innerHTML=TAG_DIMS.map(d=>`
     <div style="margin-bottom:10px;">
@@ -1890,7 +1930,7 @@ function openAdvModal(vid){
 
 function renderAdvChips(bodyId,vid){
   const tag=getTag(vid);
-  const sel=tag?.adv||[];
+  const sel=isLoggedIn()&&getMyAdvTags(vid).length ? getMyAdvTags(vid) : (tag?.adv||[]);
   const body=document.getElementById(bodyId);
   if(!body)return;
   const isEdit=S.sessionVoted.has('adv_'+vid);
@@ -1991,6 +2031,7 @@ function closeAllMenusOnce(){closeAllMenus();}
 // ── 報告フォーム ──
 let reportVid=null;
 function openReportModal(vid){
+  if(!requireLogin('報告機能'))return;
   reportVid=vid;
   const song=S.songs.find(s=>s.videoId===vid)||{};
   const meta=S.ytMeta[vid]||{};
@@ -1999,15 +2040,13 @@ function openReportModal(vid){
 }
 function closeReportModal(){document.getElementById('reportOverlay').classList.remove('open');reportVid=null;}
 async function submitReport(){
-  const name=document.getElementById('reportName').value.trim();
   const contact=document.getElementById('reportContact').value.trim();
   const type=document.querySelector('input[name="reportType"]:checked')?.value||'other';
   const comment=document.getElementById('reportComment').value.trim();
-  if(!name){showToast('名前を入力してください');return;}
   try{
     await apiFetch('/api/report',{
       method:'POST',
-      body:{videoId:reportVid,name,contact,type,comment},
+      body:{videoId:reportVid,contact,type,comment},
     });
   }catch(e){showToast('報告送信に失敗しました');return;}
   closeReportModal();
@@ -2052,20 +2091,88 @@ function toggleAdvFilterTag(tag){
 function scrollToMain(){document.getElementById('mainContent')?.scrollIntoView({behavior:'smooth'});}
 function scrollToFilter(){document.getElementById('filter-sec')?.scrollIntoView({behavior:'smooth'});}
 
-// ── ユーザー認証（localStorage簡易版、将来Supabase/Discord OAuth対応） ──
-function initUser(){
-  let uid=localStorage.getItem('ic_uid');
-  if(!uid){uid='anon_'+Math.random().toString(36).slice(2,10);localStorage.setItem('ic_uid',uid);}
-  S.currentUserId=uid;
+// ── ユーザー認証 ──
+function isLoggedIn(){return !!S.currentUserId;}
+function getUserInitial(){
+  const source=S.currentUser?.displayName||S.currentUser?.username||'?';
+  return String(source||'?').trim().slice(0,1).toUpperCase()||'?';
+}
+function updateAuthUI(){
   const av=document.getElementById('userAvatar');
-  if(av)av.textContent=uid.slice(5,7).toUpperCase();
+  if(av)av.textContent=isLoggedIn()?getUserInitial():'?';
   const bar=document.getElementById('authContent');
-  if(bar)bar.innerHTML=`
-    <div style="font-size:10px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:6px;">ユーザーID</div>
-    <div style="font-size:11px;color:var(--tx2);font-family:'Space Mono',monospace;margin-bottom:10px;">${uid}</div>
-    <div style="font-size:10px;color:var(--tx3);line-height:1.6;">現在は匿名IDで動作しています。<br>将来的にDiscordログインに対応予定。</div>
+  if(!bar)return;
+  if(!isLoggedIn()){
+    bar.innerHTML=`
+      <div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:6px;">Discordログイン</div>
+      <div style="font-size:10px;color:var(--tx3);line-height:1.6;margin-bottom:10px;">未ログインでも閲覧はできます。<br>タグ登録と報告はログイン後に利用できます。</div>
+      <a class="btn-pri" href="/api/auth/discord/start" style="display:block;text-align:center;text-decoration:none;">Discordでログイン</a>
+      <a href="moderator.html" style="display:block;margin-top:10px;font-size:11px;color:var(--ac2);">⚙ モデレーター管理画面</a>
+    `;
+    return;
+  }
+  const displayName=escH(S.currentUser.displayName||S.currentUser.username||S.currentUser.id);
+  const userId=escH(S.currentUser.id||'');
+  bar.innerHTML=`
+    <div style="font-size:10px;color:var(--tx3);font-family:'Space Mono',monospace;letter-spacing:.1em;margin-bottom:6px;">USER</div>
+    <div style="font-size:12px;color:var(--tx);font-weight:600;margin-bottom:4px;">${displayName}</div>
+    <div style="font-size:11px;color:var(--tx2);font-family:'Space Mono',monospace;margin-bottom:10px;">${userId}</div>
+    <div class="fld" style="margin-bottom:10px;">
+      <label class="fld-label">表示名</label>
+      <input class="fld-input" id="profileDisplayName" type="text" maxlength="40" value="${displayName}">
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn-pri" style="flex:1;" onclick="submitProfile()">保存</button>
+      <button class="btn-sec" onclick="logout()">ログアウト</button>
+    </div>
     <a href="moderator.html" style="display:block;margin-top:10px;font-size:11px;color:var(--ac2);">⚙ モデレーター管理画面</a>
   `;
+}
+async function initUser(){
+  try{
+    const data=await apiFetch('/api/auth/me');
+    S.currentUser=data.user||null;
+    S.currentUserId=data.user?.id||'';
+  }catch(e){
+    S.currentUser=null;
+    S.currentUserId='';
+  }
+  updateAuthUI();
+}
+function requireLogin(action='この機能'){
+  if(isLoggedIn())return true;
+  showToast(`${action}はDiscordログイン後に利用できます`);
+  document.getElementById('authBar')?.classList.add('open');
+  return false;
+}
+async function submitProfile(){
+  if(!isLoggedIn())return;
+  const input=document.getElementById('profileDisplayName');
+  const displayName=input?.value.trim()||'';
+  if(!displayName){showToast('表示名を入力してください');return;}
+  try{
+    const data=await apiFetch('/api/account/profile',{
+      method:'POST',
+      body:{displayName},
+    });
+    S.currentUser=data.user||S.currentUser;
+    S.currentUserId=S.currentUser?.id||'';
+    updateAuthUI();
+    showToast('表示名を更新しました');
+  }catch(e){showToast('表示名の更新に失敗しました');}
+}
+async function logout(){
+  try{
+    await apiFetch('/api/auth/logout',{method:'POST'});
+  }catch(e){}
+  S.currentUser=null;
+  S.currentUserId='';
+  S.liked=new Set();
+  updateAuthUI();
+  document.getElementById('authBar')?.classList.remove('open');
+  await loadSharedState();
+  renderMain();
+  renderFilter();
 }
 function toggleAuthBar(){
   document.getElementById('authBar').classList.toggle('open');
@@ -2140,11 +2247,12 @@ function closeSimModal(){document.getElementById('simOverlay').classList.remove(
 //  LIKE
 // ══════════════════════════════════════════
 async function toggleLike(vid) {
+  if(!requireLogin('いいね'))return;
   let data;
   try{
     data=await apiFetch('/api/like-toggle',{
       method:'POST',
-      body:{userId:S.currentUserId,videoId:vid},
+      body:{videoId:vid},
     });
   }catch(e){showToast('いいね保存に失敗しました');return;}
   applySongState(vid,null,data.likes,data.liked);
@@ -2240,7 +2348,7 @@ function showSongInPlayer(song){
   const ytLink=document.getElementById('playerYtLink');
   ytLink.href=ytUrl(song.videoId);
   // build vote sliders
-  const tag=getTag(song.videoId);
+  const tag=getEditableTagValues(song.videoId);
   const sliders=document.getElementById('playerVoteSliders');
   sliders.innerHTML=TAG_DIMS.map(d=>`
     <div class="pv-row">
@@ -2336,7 +2444,7 @@ function showToast(msg){
 // ══════════════════════════════════════════
 async function init(){
   load();
-  initUser();
+  await initUser();
   // show skeletons
   const g=document.getElementById('mainGrid');
   g.innerHTML='';
@@ -2388,6 +2496,9 @@ async function submitContact(){
   document.getElementById('contactOverlay').classList.remove('open');
   showToast('送信しました。ありがとうございます！');
 }
+const authError=new URL(location.href).searchParams.get('authError');
+if(authError==='discord_login_failed') setTimeout(()=>showToast('Discordログインに失敗しました'),0);
+if(authError==='state_mismatch') setTimeout(()=>showToast('ログイン認証の確認に失敗しました'),0);
 init();
 </script>
 

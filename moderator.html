@@ -338,13 +338,25 @@ button{cursor:pointer;font-family:inherit;border:none;}
       <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--br);max-width:520px;">
         <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;">楽曲・タグ バックアップ</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-          <button class="btn btn-sec" onclick="exportNormalizedData()">ダウンロード</button>
-          <button class="btn btn-sec" onclick="document.getElementById('backupImportFile').click()">アップロード</button>
-          <input id="backupImportFile" type="file" accept="application/json" style="display:none;" onchange="importNormalizedData(event)">
+          <button class="btn btn-sec" onclick="exportSongsTagsBackup()">ダウンロード</button>
+          <button class="btn btn-sec" onclick="document.getElementById('songsTagsImportFile').click()">アップロード</button>
+          <input id="songsTagsImportFile" type="file" accept="application/json" style="display:none;" onchange="importSongsTagsBackup(event)">
         </div>
         <div style="font-size:10px;color:var(--tx3);line-height:1.7;">
-          楽曲キャッシュ・タグ投票・高度なタグ投票・規約文を JSON で書き出します。<br>
-          アップロードすると現在の楽曲キャッシュ・タグ情報・規約文を上書きします。
+          楽曲キャッシュ・タグ投票・高度なタグ投票を JSON で書き出します。<br>
+          アップロードすると現在の楽曲キャッシュ・タグ情報を上書きします。
+        </div>
+      </div>
+      <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--br);max-width:520px;">
+        <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;">規約文 バックアップ</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="btn btn-sec" onclick="exportLegalDocsBackup()">ダウンロード</button>
+          <button class="btn btn-sec" onclick="document.getElementById('legalDocsImportFile').click()">アップロード</button>
+          <input id="legalDocsImportFile" type="file" accept="application/json" style="display:none;" onchange="importLegalDocsBackup(event)">
+        </div>
+        <div style="font-size:10px;color:var(--tx3);line-height:1.7;">
+          利用規約とプライバシーポリシーを JSON で書き出します。<br>
+          アップロードすると規約文のみ上書きし、楽曲・タグ情報には触れません。
         </div>
       </div>
       <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--br);">
@@ -401,6 +413,9 @@ let REMOTE_TOS_HTML='';
 let REMOTE_TOS_UPDATED_AT='';
 let REMOTE_PRIVACY_HTML='';
 let REMOTE_PRIVACY_UPDATED_AT='';
+let REMOTE_USERS=[];
+let REMOTE_STATS=null;
+let CURRENT_USER=null;
 
 async function apiFetch(path, options={}){
   const res=await fetch(path,{
@@ -413,21 +428,26 @@ async function apiFetch(path, options={}){
   return data;
 }
 async function syncRemoteData(){
-  const [songsApi, bootstrap, reportsRes, tosDoc, privacyDoc] = await Promise.all([
+  const [songsApi, bootstrap, reportsRes, tosDoc, privacyDoc, usersRes, statsRes] = await Promise.all([
     apiFetch('/api/songs'),
-    apiFetch('/api/bootstrap?userId=mod_panel'),
+    apiFetch('/api/bootstrap'),
     apiFetch('/api/reports'),
     apiFetch('/api/legal-doc?key=tos'),
     apiFetch('/api/legal-doc?key=privacy'),
+    apiFetch('/api/users'),
+    apiFetch('/api/stats'),
   ]);
   REMOTE_SONGS=Array.isArray(songsApi?.songs)?songsApi.songs:[];
   REMOTE_SONGS_UPDATED_AT=songsApi?.updatedAt||'';
   REMOTE_TAGS=bootstrap.tags||{};
   REMOTE_REPORTS=reportsRes.reports||[];
+  CURRENT_USER=bootstrap.user||null;
   REMOTE_TOS_HTML=String(tosDoc?.content||'');
   REMOTE_TOS_UPDATED_AT=String(tosDoc?.updatedAt||'');
   REMOTE_PRIVACY_HTML=String(privacyDoc?.content||'');
   REMOTE_PRIVACY_UPDATED_AT=String(privacyDoc?.updatedAt||'');
+  REMOTE_USERS=usersRes.users||[];
+  REMOTE_STATS=statsRes||null;
 }
 
 function renderSongCacheStatus(updatedAt){
@@ -460,7 +480,19 @@ async function refreshSongsCache(){
   }
 }
 
-async function exportNormalizedData(){
+function downloadJsonFile(filename, payload){
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportSongsTagsBackup(){
   const token=getAdminToken();
   if(!token){showToast('先に年表更新トークンを設定してください');return;}
   let data;
@@ -470,19 +502,45 @@ async function exportNormalizedData(){
     if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
   }catch(e){showToast('ダウンロードに失敗しました');return;}
 
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`imitate_collection_backup_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  showToast('バックアップをダウンロードしました');
+  downloadJsonFile(
+    `imitate_collection_songs_tags_${new Date().toISOString().replace(/[:.]/g,'-')}.json`,
+    {
+      version:data.version||1,
+      exportedAt:data.exportedAt||new Date().toISOString(),
+      songsUpdatedAt:data.songsUpdatedAt||null,
+      songs:data.songs||[],
+      tagVotes:data.tagVotes||[],
+      advTagVotes:data.advTagVotes||[],
+    }
+  );
+  showToast('楽曲・タグバックアップをダウンロードしました');
 }
 
-async function importNormalizedData(event){
+async function exportLegalDocsBackup(){
+  const token=getAdminToken();
+  if(!token){showToast('先に年表更新トークンを設定してください');return;}
+  let data;
+  try{
+    const res=await fetch('/api/admin/export-data',{headers:{'x-admin-token':token}});
+    data=await res.json();
+    if(!res.ok||data.ok===false) throw new Error(data.error||`HTTP ${res.status}`);
+  }catch(e){showToast('ダウンロードに失敗しました');return;}
+
+  downloadJsonFile(
+    `imitate_collection_legal_docs_${new Date().toISOString().replace(/[:.]/g,'-')}.json`,
+    {
+      version:data.version||1,
+      exportedAt:data.exportedAt||new Date().toISOString(),
+      tosHtml:typeof data.tosHtml==='string'?data.tosHtml:'',
+      tosUpdatedAt:data.tosUpdatedAt||null,
+      privacyHtml:typeof data.privacyHtml==='string'?data.privacyHtml:'',
+      privacyUpdatedAt:data.privacyUpdatedAt||null,
+    }
+  );
+  showToast('規約文バックアップをダウンロードしました');
+}
+
+async function importSongsTagsBackup(event){
   const file=event.target.files?.[0];
   event.target.value='';
   if(!file)return;
@@ -495,6 +553,11 @@ async function importNormalizedData(event){
     parsed=JSON.parse(await file.text());
   }catch(e){showToast('JSONの読み込みに失敗しました');return;}
 
+  if(!Array.isArray(parsed.songs)||!Array.isArray(parsed.tagVotes)||!Array.isArray(parsed.advTagVotes)){
+    showToast('楽曲・タグバックアップの形式ではありません');
+    return;
+  }
+
   try{
     const data=await apiFetch('/api/admin/import-data',{
       method:'POST',
@@ -504,8 +567,6 @@ async function importNormalizedData(event){
         songsUpdatedAt:parsed.songsUpdatedAt||parsed.exportedAt||new Date().toISOString(),
         tagVotes:parsed.tagVotes||[],
         advTagVotes:parsed.advTagVotes||[],
-        tosHtml:typeof parsed.tosHtml==='string'?parsed.tosHtml:undefined,
-        privacyHtml:typeof parsed.privacyHtml==='string'?parsed.privacyHtml:undefined,
       },
     });
     await syncRemoteData();
@@ -517,11 +578,49 @@ async function importNormalizedData(event){
   }
 }
 
+async function importLegalDocsBackup(event){
+  const file=event.target.files?.[0];
+  event.target.value='';
+  if(!file)return;
+  const token=getAdminToken();
+  if(!token){showToast('先に年表更新トークンを設定してください');return;}
+  if(!confirm('現在の利用規約・プライバシーポリシーを、選択したJSONで上書きします。続行しますか？'))return;
+
+  let parsed;
+  try{
+    parsed=JSON.parse(await file.text());
+  }catch(e){showToast('JSONの読み込みに失敗しました');return;}
+
+  if(typeof parsed.tosHtml!=='string'&&typeof parsed.privacyHtml!=='string'){
+    showToast('規約文バックアップの形式ではありません');
+    return;
+  }
+
+  try{
+    await apiFetch('/api/admin/import-data',{
+      method:'POST',
+      body:{
+        token,
+        tosHtml:typeof parsed.tosHtml==='string'?parsed.tosHtml:getTos(),
+        privacyHtml:typeof parsed.privacyHtml==='string'?parsed.privacyHtml:getPrivacy(),
+      },
+    });
+    await syncRemoteData();
+    renderPanel(document.querySelector('.sb-item.active')?.dataset.panel||'dashboard');
+    showToast('規約文を取り込みました');
+  }catch(e){
+    showToast('アップロードに失敗しました');
+  }
+}
+
 function getTags(){ return REMOTE_TAGS; }
 function setTags(t){ REMOTE_TAGS=t; }
 function getReports(){ return REMOTE_REPORTS; }
 function setReports(r){ REMOTE_REPORTS=r; }
 function getCache(){ return REMOTE_SONGS; }
+function getUsers(){ return REMOTE_USERS; }
+function getStats(){ return REMOTE_STATS; }
+function getCurrentUser(){ return CURRENT_USER; }
 function getHidden(){ try{return JSON.parse(localStorage.getItem('ic_hidden')||'[]')}catch(e){return[]} }
 function setHidden(h){ localStorage.setItem('ic_hidden',JSON.stringify(h)) }
 function getBanned(){ try{return JSON.parse(localStorage.getItem('ic_banned')||'[]')}catch(e){return[]} }
@@ -626,6 +725,8 @@ function renderDashboard(){
   const taggedCount=Object.keys(tags).length;
   const reports=getReports();
   const openReports=reports.filter(r=>!r.resolved).length;
+  const stats=getStats();
+  const summary=stats?.summary||{};
 
   const acc=getAccessData();
   const clicks=getClickData();
@@ -645,6 +746,8 @@ function renderDashboard(){
   const uidDaily=getUidDaily();
   const dailyUniq={};
   Object.entries(uidDaily).forEach(([day,uids])=>{ dailyUniq[day]=Object.keys(uids).length; });
+  const loginDaily=Object.fromEntries((stats?.dailyLogins||[]).map(row=>[row.day,row.count]));
+  const activeDaily=Object.fromEntries((stats?.dailyActiveUsers||[]).map(row=>[row.day,row.count]));
 
   document.getElementById('statsGrid').innerHTML=`
     <!-- 登録動画数（全幅） -->
@@ -673,11 +776,21 @@ function renderDashboard(){
       <div class="stat-card"><div class="stat-num">${mUniq}</div><div class="stat-label">月間ユニーク数</div></div>
       <div class="stat-card"><div class="stat-num">${mClicksCalc}</div><div class="stat-label">月間リンククリック</div></div>
     </div>
+    <div class="dash-row">
+      <div class="stat-card"><div class="stat-num">${summary.monthlyLogins||0}</div><div class="stat-label">月間ログイン数</div></div>
+      <div class="stat-card"><div class="stat-num">${summary.monthlyActiveUsers||0}</div><div class="stat-label">月間ログインユーザー数</div></div>
+      <div class="stat-card"><div class="stat-num">${summary.currentSessions||0}</div><div class="stat-label">有効セッション数</div></div>
+    </div>
     <!-- 3列: 累計 -->
     <div class="dash-row">
       <div class="stat-card"><div class="stat-num">${tAccess}</div><div class="stat-label">累計アクセス数</div></div>
       <div class="stat-card"><div class="stat-num">${tUniq}</div><div class="stat-label">累計ユニーク数</div></div>
       <div class="stat-card"><div class="stat-num">${tClicks}</div><div class="stat-label">累計リンククリック</div></div>
+    </div>
+    <div class="dash-row">
+      <div class="stat-card"><div class="stat-num">${summary.totalLogins||0}</div><div class="stat-label">累計ログイン数</div></div>
+      <div class="stat-card"><div class="stat-num">${summary.usersTotal||0}</div><div class="stat-label">登録ユーザー数</div></div>
+      <div class="stat-card"><div class="stat-num">${summary.bannedUsers||0}</div><div class="stat-label">BANユーザー数</div></div>
     </div>
     <!-- 棒グラフ 3列 -->
     <div class="dash-row" style="margin-top:4px;">
@@ -692,6 +805,26 @@ function renderDashboard(){
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別クリック数（14日）</div>
         ${makeMiniChart(dailyClicks,'#fbbf24')}
+      </div>
+    </div>
+    <div class="dash-row" style="margin-top:4px;">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別ログイン数（30日）</div>
+        ${makeMiniChart(loginDaily,'#f472b6',30)}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別ログインユーザー数（30日）</div>
+        ${makeMiniChart(activeDaily,'#22c55e',30)}
+      </div>
+      <div class="tbl-wrap" style="margin-top:20px;">
+        <table class="tbl">
+          <thead><tr><th>新規ユーザー</th><th>ユーザーID</th><th>登録日時</th></tr></thead>
+          <tbody>${(stats?.latestUsers||[]).map(u=>`<tr>
+            <td>${escH(u.displayName||u.username||u.id)}</td>
+            <td style="font-family:'Space Mono',monospace;font-size:10px;">${escH(u.id)}</td>
+            <td>${new Date(u.createdAt).toLocaleString('ja-JP')}</td>
+          </tr>`).join('')||'<tr><td colspan="3" style="color:var(--tx3);">まだユーザーがいません</td></tr>'}</tbody>
+        </table>
       </div>
     </div>
   `;
@@ -729,6 +862,7 @@ function renderReports(){
           <div>
             <div style="font-size:13px;font-weight:600;margin-bottom:3px;">${escH(r.vid)}</div>
             <div class="report-meta">報告者: ${escH(r.name)} ${r.contact?`/ ${escH(r.contact)}`:''}</div>
+            ${r.userId?`<div class="report-meta">ユーザーID: <span style="font-family:'Space Mono',monospace;">${escH(r.userId)}</span></div>`:''}
             <div class="report-meta">種別: <span class="badge ${r.type==='not_kaiwai'?'red':'yellow'}">${typeLabel[r.type]||r.type}</span></div>
             <div class="report-meta" style="margin-top:5px;">${escH(r.comment)}</div>
             <div class="report-meta">${new Date(r.ts).toLocaleString('ja-JP')}</div>
@@ -1000,7 +1134,8 @@ function loadTagForEdit(){loadTagById(document.getElementById('tagEdVid')?.value
 async function saveTagEdit(){
   const vid=window._tagEdVid;
   if(!vid){showToast('VideoIDを選択してください');return;}
-  const body={userId:'mod_panel',videoId:vid};
+  if(!getCurrentUser()?.id){showToast('タグ編集にはDiscordログインが必要です');return;}
+  const body={videoId:vid};
   ['mood','rhythm','melody','origin'].forEach(k=>{
     const el=document.getElementById('tagEd_'+k);
     if(el)body[k]=parseInt(el.value)||10;
@@ -1167,52 +1302,67 @@ function removeCustomTag(i){
 //  USERS
 // ══════════════════════════════
 function renderUsers(){
-  const tags=getTags();
-  const banned=getBanned();
-  // 匿名IDを収集（タグの保存から類推）
+  const users=getUsers();
+  const stats=getStats();
   const el=document.getElementById('usersContent');
-  const uid=localStorage.getItem('ic_uid')||'unknown';
+  const current=getCurrentUser();
+  const rows=[...users].sort((a,b)=>{
+    if(Number(b.isBanned)!==Number(a.isBanned)) return Number(b.isBanned)-Number(a.isBanned);
+    return (Date.parse(b.lastLoginAt||b.createdAt||'')||0)-(Date.parse(a.lastLoginAt||a.createdAt||'')||0);
+  });
   el.innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
-      <div class="stat-card"><div class="stat-num">${Object.keys(tags).length}</div><div class="stat-label">タグ保存曲数</div></div>
-      <div class="stat-card"><div class="stat-num">${banned.length}</div><div class="stat-label">BAN済みID</div></div>
-      <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">月間ユーザー(準備中)</div></div>
+      <div class="stat-card"><div class="stat-num">${stats?.summary?.usersTotal||0}</div><div class="stat-label">登録ユーザー数</div></div>
+      <div class="stat-card"><div class="stat-num">${stats?.summary?.bannedUsers||0}</div><div class="stat-label">BAN済みユーザー</div></div>
+      <div class="stat-card"><div class="stat-num">${stats?.summary?.monthlyActiveUsers||0}</div><div class="stat-label">月間ログインユーザー</div></div>
     </div>
     <p style="font-size:12px;color:var(--tx3);margin-bottom:16px;">
-      現在は匿名IDシステムです。Discordログイン対応後、より詳細なユーザー管理が可能になります。
+      Discordログイン済みユーザーを一覧表示します。BANしたユーザーはタグ登録・いいね・報告・表示名変更ができません。
     </p>
-    <div class="tbl-wrap" style="max-width:500px;">
+    <div class="tbl-wrap">
       <table class="tbl">
-        <thead><tr><th>ユーザーID</th><th>状態</th><th>操作</th></tr></thead>
+        <thead><tr><th>表示名</th><th>アカウント</th><th>活動</th><th>状態</th><th>操作</th></tr></thead>
         <tbody>
-          <tr>
-            <td style="font-family:'Space Mono',monospace;font-size:11px;">${uid} (自分)</td>
-            <td><span class="badge green">アクティブ</span></td>
-            <td>—</td>
-          </tr>
-          ${banned.map(id=>`<tr>
-            <td style="font-family:'Space Mono',monospace;font-size:11px;">${escH(id)}</td>
-            <td><span class="badge red">BAN</span></td>
-            <td><button class="btn btn-sec" style="font-size:11px;padding:4px 8px;" onclick="unbanUser('${escH(id)}')">BAN解除</button></td>
-          </tr>`).join('')}
+          ${rows.map(user=>`<tr>
+            <td>
+              <div style="font-weight:600;">${escH(user.displayName||user.username||user.id)}${current?.id===user.id?' <span style="font-size:10px;color:var(--ac2);">(自分)</span>':''}</div>
+              <div style="font-size:10px;color:var(--tx3);">${escH(user.username||'')}</div>
+            </td>
+            <td>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;">${escH(user.id)}</div>
+              <div style="font-size:10px;color:var(--tx3);">Discord: ${escH(user.discordUserId||'')}</div>
+              <div style="font-size:10px;color:var(--tx3);">登録: ${user.createdAt?new Date(user.createdAt).toLocaleDateString('ja-JP'):'—'}</div>
+            </td>
+            <td>
+              <div>ログイン ${user.loginCount}</div>
+              <div>タグ ${user.taggedVideos} / いいね ${user.likedVideos}</div>
+              <div>報告 ${user.reportCount}</div>
+              <div style="font-size:10px;color:var(--tx3);">最終ログイン: ${user.lastLoginAt?new Date(user.lastLoginAt).toLocaleString('ja-JP'):'—'}</div>
+            </td>
+            <td>${user.isBanned?'<span class="badge red">BAN</span>':'<span class="badge green">アクティブ</span>'}</td>
+            <td>
+              ${user.isBanned
+                ?`<button class="btn btn-sec" style="font-size:11px;padding:4px 8px;" onclick="toggleUserBan('${escH(user.id)}', false)">BAN解除</button>`
+                :`<button class="btn btn-danger" style="font-size:11px;padding:4px 8px;" onclick="toggleUserBan('${escH(user.id)}', true)">BAN</button>`}
+            </td>
+          </tr>`).join('') || '<tr><td colspan="5" style="color:var(--tx3);">ユーザーはまだいません</td></tr>'}
         </tbody>
       </table>
     </div>
-    <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
-      <input class="form-input" id="banUidInput" placeholder="BAN するユーザーID" style="width:240px;">
-      <button class="btn btn-danger" onclick="banUser()">BAN</button>
-    </div>
   `;
 }
-function banUser(){
-  const id=document.getElementById('banUidInput').value.trim();
-  if(!id)return;
-  const b=getBanned();if(!b.includes(id))b.push(id);setBanned(b);
-  renderUsers();showToast(`${id} をBANしました`);
-}
-function unbanUser(id){
-  const b=getBanned();const i=b.indexOf(id);if(i>=0)b.splice(i,1);setBanned(b);
-  renderUsers();showToast(`${id} のBANを解除しました`);
+async function toggleUserBan(id, banned){
+  try{
+    await apiFetch('/api/user-ban',{
+      method:'POST',
+      body:{userId:id,banned},
+    });
+    await syncRemoteData();
+    renderUsers();
+    showToast(banned?`${id} をBANしました`:`${id} のBANを解除しました`);
+  }catch(e){
+    showToast('ユーザー状態の更新に失敗しました');
+  }
 }
 
 // ══════════════════════════════
@@ -1398,10 +1548,11 @@ function renderTagEdAdv(vid,song,tag){
     </div>`;
 }
 async function saveModAdvTags(vid){
+  if(!getCurrentUser()?.id){showToast('高度なタグ保存にはDiscordログインが必要です');return;}
   const sel=[...document.querySelectorAll('#tagEdAdvArea .adv-chip.sel')]
     .map(b=>b.textContent.trim().replace(/\s*\d+%$/, ''));
   try{
-    const res=await apiFetch('/api/adv-tags',{method:'POST',body:{userId:'mod_panel',videoId:vid,tags:sel}});
+    const res=await apiFetch('/api/adv-tags',{method:'POST',body:{videoId:vid,tags:sel}});
     REMOTE_TAGS[vid]=res.tag;
   }catch(e){showToast('高度なタグ保存に失敗しました');return;}
   showToast('高度なタグを強制保存しました');
@@ -1497,11 +1648,12 @@ async function init(){
       showToast('共有データの取得に失敗しました');
     }
     renderDashboard();
-    const uid=localStorage.getItem('ic_uid')||'guest';
+    const current=getCurrentUser();
     const el=document.getElementById('modUserId');
     const ic=document.getElementById('modUserIcon');
-    if(el)el.textContent=uid.length>14?uid.slice(0,14)+'…':uid;
-    if(ic)ic.textContent=uid.slice(-2).toUpperCase();
+    const label=current?.displayName||current?.username||'未ログイン';
+    if(el)el.textContent=label.length>14?label.slice(0,14)+'…':label;
+    if(ic)ic.textContent=(label||'?').slice(0,1).toUpperCase();
   }
 }
 if(sessionStorage.getItem(SESSION_KEY)==='1') init();

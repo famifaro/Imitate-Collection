@@ -1,9 +1,7 @@
-import { badRequest, getBootstrapData, getUserId, json } from './_utils.js';
+import { getBootstrapData, getSessionUser, json } from './_utils.js';
 
 export async function onRequestGet(context) {
-  const userId = getUserId(new URL(context.request.url).searchParams.get('userId'));
-  if (!userId) return badRequest('userId is required');
-
-  const data = await getBootstrapData(context.env.DB, userId);
-  return json({ ok: true, ...data });
+  const session = await getSessionUser(context.request, context.env);
+  const data = await getBootstrapData(context.env.DB, session?.user?.id || null);
+  return json({ ok: true, ...data, loggedIn: !!session, user: session?.user || null });
 }

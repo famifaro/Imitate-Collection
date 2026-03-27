@@ -67,60 +67,70 @@ export async function onRequestPost(context) {
   const expected = String(context.env.ADMIN_TOKEN || '').trim();
   if (!expected || token !== expected) return unauthorized();
 
-  const songs = Array.isArray(body?.songs) ? body.songs.map(normalizeSong).filter(Boolean) : null;
-  const tagVotes = Array.isArray(body?.tagVotes)
+  const hasSongs = Array.isArray(body?.songs);
+  const hasTagVotes = Array.isArray(body?.tagVotes);
+  const hasAdvTagVotes = Array.isArray(body?.advTagVotes);
+  const songs = hasSongs ? body.songs.map(normalizeSong).filter(Boolean) : null;
+  const tagVotes = hasTagVotes
     ? body.tagVotes.map(normalizeTagVote).filter(Boolean)
     : null;
-  const advTagVotes = Array.isArray(body?.advTagVotes)
+  const advTagVotes = hasAdvTagVotes
     ? body.advTagVotes.map(normalizeAdvVote).filter(Boolean)
     : null;
+  const replaceData = hasSongs || hasTagVotes || hasAdvTagVotes;
 
-  if (!songs || !tagVotes || !advTagVotes) {
-    return badRequest('songs, tagVotes, advTagVotes are required arrays');
+  if (!replaceData && typeof body?.tosHtml !== 'string' && typeof body?.privacyHtml !== 'string') {
+    return badRequest('nothing to import');
   }
 
-  await context.env.DB.batch([
-    context.env.DB.prepare(`DELETE FROM adv_tag_votes`),
-    context.env.DB.prepare(`DELETE FROM tag_votes`),
-  ]);
+  if (replaceData) {
+    if (!songs || !tagVotes || !advTagVotes) {
+      return badRequest('songs, tagVotes, advTagVotes are required arrays when replacing music data');
+    }
 
-  const tagStatements = tagVotes.map((row) =>
-    context.env.DB.prepare(
-      `INSERT INTO tag_votes (video_id, user_id, mood, rhythm, melody, origin, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      row.video_id,
-      row.user_id,
-      row.mood,
-      row.rhythm,
-      row.melody,
-      row.origin,
-      row.created_at || new Date().toISOString(),
-      row.updated_at || new Date().toISOString()
-    )
-  );
-  for (let i = 0; i < tagStatements.length; i += 100) {
-    await context.env.DB.batch(tagStatements.slice(i, i + 100));
+    await context.env.DB.batch([
+      context.env.DB.prepare(`DELETE FROM adv_tag_votes`),
+      context.env.DB.prepare(`DELETE FROM tag_votes`),
+    ]);
+
+    const tagStatements = tagVotes.map((row) =>
+      context.env.DB.prepare(
+        `INSERT INTO tag_votes (video_id, user_id, mood, rhythm, melody, origin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        row.video_id,
+        row.user_id,
+        row.mood,
+        row.rhythm,
+        row.melody,
+        row.origin,
+        row.created_at || new Date().toISOString(),
+        row.updated_at || new Date().toISOString()
+      )
+    );
+    for (let i = 0; i < tagStatements.length; i += 100) {
+      await context.env.DB.batch(tagStatements.slice(i, i + 100));
+    }
+
+    const advStatements = advTagVotes.map((row) =>
+      context.env.DB.prepare(
+        `INSERT INTO adv_tag_votes (video_id, user_id, tag, selected, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(
+        row.video_id,
+        row.user_id,
+        row.tag,
+        row.selected,
+        row.created_at || new Date().toISOString(),
+        row.updated_at || new Date().toISOString()
+      )
+    );
+    for (let i = 0; i < advStatements.length; i += 100) {
+      await context.env.DB.batch(advStatements.slice(i, i + 100));
+    }
+
+    await writeSongsCache(context.env.DB, songs, String(body?.songsUpdatedAt || new Date().toISOString()));
   }
-
-  const advStatements = advTagVotes.map((row) =>
-    context.env.DB.prepare(
-      `INSERT INTO adv_tag_votes (video_id, user_id, tag, selected, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(
-      row.video_id,
-      row.user_id,
-      row.tag,
-      row.selected,
-      row.created_at || new Date().toISOString(),
-      row.updated_at || new Date().toISOString()
-    )
-  );
-  for (let i = 0; i < advStatements.length; i += 100) {
-    await context.env.DB.batch(advStatements.slice(i, i + 100));
-  }
-
-  await writeSongsCache(context.env.DB, songs, String(body?.songsUpdatedAt || new Date().toISOString()));
 
   const tosHtml = typeof body?.tosHtml === 'string' ? body.tosHtml : null;
   const privacyHtml = typeof body?.privacyHtml === 'string' ? body.privacyHtml : null;
@@ -151,8 +161,8 @@ export async function onRequestPost(context) {
 
   return json({
     ok: true,
-    songs: songs.length,
-    tagVotes: tagVotes.length,
-    advTagVotes: advTagVotes.length,
+    songs: songs?.length || 0,
+    tagVotes: tagVotes?.length || 0,
+    advTagVotes: advTagVotes?.length || 0,
   });
 }

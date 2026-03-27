@@ -1,10 +1,13 @@
 import {
-  badRequest,
   getTagAggregate,
-  getUserId,
   getVideoId,
   json,
   readJson,
+  requireActiveUser,
+  requireUser,
+  unauthorized,
+  badRequest,
+  forbidden,
 } from './_utils.js';
 
 function readScore(body, key) {
@@ -13,15 +16,20 @@ function readScore(body, key) {
 }
 
 export async function onRequestPost(context) {
+  const user = await requireActiveUser(context.request, context.env);
+  if (!user) {
+    const loginUser = await requireUser(context.request, context.env);
+    return loginUser ? forbidden('account is banned') : unauthorized();
+  }
+
   const body = await readJson(context.request);
-  const userId = getUserId(body?.userId);
   const videoId = getVideoId(body?.videoId);
   const mood = readScore(body, 'mood');
   const rhythm = readScore(body, 'rhythm');
   const melody = readScore(body, 'melody');
   const origin = readScore(body, 'origin');
 
-  if (!userId || !videoId) return badRequest('userId and videoId are required');
+  if (!videoId) return badRequest('videoId is required');
   if ([mood, rhythm, melody, origin].some((v) => v === null)) {
     return badRequest('scores must be integers between 0 and 20');
   }
@@ -36,7 +44,7 @@ export async function onRequestPost(context) {
        origin = excluded.origin,
        updated_at = CURRENT_TIMESTAMP`
   )
-    .bind(videoId, userId, mood, rhythm, melody, origin)
+    .bind(videoId, user.id, mood, rhythm, melody, origin)
     .run();
 
   const tag = await getTagAggregate(context.env.DB, videoId);
