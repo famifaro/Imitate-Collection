@@ -265,7 +265,8 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 .dual-range{position:relative;height:18px;}
 .dr-track{position:absolute;top:50%;transform:translateY(-50%);width:100%;height:3px;background:var(--s2);border-radius:2px;pointer-events:none;}
 .dr-fill{position:absolute;height:100%;border-radius:2px;pointer-events:none;}
-.dual-range input[type=range]{position:absolute;width:100%;top:50%;transform:translateY(-50%);-webkit-appearance:none;appearance:none;background:transparent;pointer-events:none;height:3px;margin:0;}
+.dual-range input[type=range]{position:absolute;width:100%;top:50%;transform:translateY(-50%);-webkit-appearance:none;appearance:none;background:transparent;pointer-events:none;height:3px;margin:0;z-index:1;}
+.dual-range input[type=range].is-top{z-index:2;}
 .dual-range input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:#fff;border-radius:50%;cursor:pointer;pointer-events:all;border:2px solid var(--thumb-color,#818cf8);box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform .1s;}
 .dual-range input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3);}
 .fi-sublabels{display:flex;justify-content:space-between;font-size:8px;color:var(--tx3);font-family:'Space Mono',monospace;margin-top:3px;letter-spacing:.02em;}
@@ -765,7 +766,7 @@ const PROXIES = [
 const csvUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
 
 const TAG_DIMS = [
-  {key:'mood',    label:'暗さ',    left:'ネガティブ', right:'ポジティブ', color:'#818cf8'},
+  {key:'mood',    label:'明るさ',  left:'暗い',       right:'明るい',      color:'#818cf8'},
   {key:'rhythm',  label:'リズム',  left:'落ち着く',   right:'乗れる',    color:'#fbbf24'},
   {key:'melody',  label:'メロ',    left:'無機質',     right:'エモい',    color:'#f472b6'},
   {key:'origin',  label:'本家度',  left:'オリジナル', right:'すべあな',  color:'#4ade80'},
@@ -896,6 +897,38 @@ function extractVid(url) {
 const thumbUrl = id => `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
 const ytUrl = id => `https://www.youtube.com/watch?v=${id}`;
 const escH = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function findSong(videoId){
+  return S.songs.find(s=>s.videoId===videoId)||null;
+}
+function markSongPrivate(videoId){
+  const song=typeof videoId==='string'?findSong(videoId):videoId;
+  if(song)song._private=true;
+  return song;
+}
+function markSongPublic(videoId){
+  const song=typeof videoId==='string'?findSong(videoId):videoId;
+  if(song)song._private=false;
+  return song;
+}
+function probeSongAvailability(song){
+  if(!song?.videoId)return Promise.resolve(false);
+  if(song._private===true)return Promise.resolve(false);
+  if(song._availabilityChecked)return Promise.resolve(true);
+  if(song._availabilityProbe)return song._availabilityProbe;
+  song._availabilityProbe=new Promise(resolve=>{
+    const img=new Image();
+    const done=isAvailable=>{
+      song._availabilityChecked=Boolean(isAvailable);
+      if(!isAvailable) song._private=true;
+      song._availabilityProbe=null;
+      resolve(Boolean(isAvailable));
+    };
+    img.onload=()=>done(!(img.naturalWidth>0&&img.naturalWidth<=120));
+    img.onerror=()=>done(false);
+    img.src=thumbUrl(song.videoId);
+  });
+  return song._availabilityProbe;
+}
 function normalizeExternalUrl(url){
   const raw=String(url||'').trim();
   if(!raw)return'';
@@ -1179,12 +1212,15 @@ async function fetchAllSheetsNetwork(showProgress) {
 async function fetchYTMeta(vids) {
   if(!S.apiKey||!vids.length)return;
   for(let i=0;i<vids.length;i+=50){
-    const batch=vids.slice(i,i+50).join(',');
+    const batchIds=vids.slice(i,i+50);
+    const batch=batchIds.join(',');
     try{
       const r=await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${batch}&part=snippet,statistics,contentDetails&key=${S.apiKey}`);
       const d=await r.json();
       if(d.error){console.warn('YT API:',d.error.message);break;}
+      const foundIds=new Set();
       for(const item of(d.items||[])){
+        foundIds.add(item.id);
         S.ytMeta[item.id]={
           views:    parseInt(item.statistics?.viewCount||0),
           duration: parseDur(item.contentDetails?.duration||''),
@@ -1193,7 +1229,13 @@ async function fetchYTMeta(vids) {
           channelName:item.snippet?.channelTitle||'',
           channelId:  item.snippet?.channelId||'',
         };
+        const song=findSong(item.id);
+        if(song){
+          song._availabilityChecked=true;
+          song._private=false;
+        }
       }
+      batchIds.forEach(id=>{ if(!foundIds.has(id)) markSongPrivate(id); });
     }catch(e){break;}
   }
   rerender();
@@ -1423,14 +1465,15 @@ function makeCard(song) {
     // Private video detection: placeholder is 120×90
     if(this.naturalWidth>0&&this.naturalWidth<=120){
       card.dataset.hidden='1';
-      const s=S.songs.find(x=>x.videoId===song.videoId);
-      if(s)s._private=true;
+      markSongPrivate(song);
+    }else{
+      markSongPublic(song);
+      song._availabilityChecked=true;
     }
   };
   img.onerror=function(){
     card.dataset.hidden='1';
-    const s=S.songs.find(x=>x.videoId===song.videoId);
-    if(s)s._private=true;
+    markSongPrivate(song);
   };
   img.src=thumbSrc;
 
@@ -1781,9 +1824,15 @@ function buildFilterSliders() {
     `;
     grid.appendChild(wrap);
     const lo=wrap.querySelector('.dr-lo'),hi=wrap.querySelector('.dr-hi');
+    const syncThumbPriority=()=>{
+      const mn=+lo.value,mx=+hi.value;
+      lo.classList.toggle('is-top',mx-mn<=1);
+      hi.classList.toggle('is-top',mx-mn>1);
+    };
     const update=function(){
       let mn=+lo.value,mx=+hi.value;
       if(mn>mx){if(this===lo)lo.value=mx,mn=mx;else hi.value=mn,mx=mn;}
+      syncThumbPriority();
       S.filters[d.key]=[mn,mx];
       document.getElementById(`df-${d.key}`).style.left=(mn/20*100)+'%';
       document.getElementById(`df-${d.key}`).style.width=((mx-mn)/20*100)+'%';
@@ -1791,6 +1840,7 @@ function buildFilterSliders() {
       S.filterPool=computeFilterPool();S.filterShown=PAGE;renderFilter();
     };
     lo.addEventListener('input',update);hi.addEventListener('input',update);
+    syncThumbPriority();
   });
 }
 
@@ -1799,7 +1849,14 @@ function resetFilters() {
     S.filters[d.key]=[0,20];
     const lo=document.querySelector(`.dr-lo[data-dim="${d.key}"]`);
     const hi=document.querySelector(`.dr-hi[data-dim="${d.key}"]`);
-    if(lo)lo.value=0;if(hi)hi.value=20;
+    if(lo){
+      lo.value=0;
+      lo.classList.remove('is-top');
+    }
+    if(hi){
+      hi.value=20;
+      hi.classList.add('is-top');
+    }
     const fill=document.getElementById(`df-${d.key}`);
     if(fill){fill.style.left='0';fill.style.width='100%';}
     const vl=document.getElementById(`fv-${d.key}`);
@@ -2077,25 +2134,40 @@ function closeAllMenusOnce(){closeAllMenus();}
 
 // ── 報告フォーム ──
 let reportVid=null;
+let reportSubmitting=false;
 function openReportModal(vid){
   if(!requireLogin('報告機能'))return;
   reportVid=vid;
   const song=S.songs.find(s=>s.videoId===vid)||{};
   const meta=S.ytMeta[vid]||{};
+  document.getElementById('reportContact').value='';
+  document.getElementById('reportComment').value='';
+  document.querySelector('input[name="reportType"][value="other"]').checked=true;
   document.getElementById('reportSub').textContent=(meta.title||song.title||vid);
   document.getElementById('reportOverlay').classList.add('open');
 }
-function closeReportModal(){document.getElementById('reportOverlay').classList.remove('open');reportVid=null;}
+function closeReportModal(){
+  document.getElementById('reportOverlay').classList.remove('open');
+  reportVid=null;
+  reportSubmitting=false;
+}
 async function submitReport(){
+  if(reportSubmitting)return;
+  if(!reportVid){showToast('報告対象の楽曲を取得できませんでした');return;}
   const contact=document.getElementById('reportContact').value.trim();
   const type=document.querySelector('input[name="reportType"]:checked')?.value||'other';
   const comment=document.getElementById('reportComment').value.trim();
+  reportSubmitting=true;
   try{
     await apiFetch('/api/report',{
       method:'POST',
       body:{videoId:reportVid,contact,type,comment},
     });
-  }catch(e){showToast('報告送信に失敗しました');return;}
+  }catch(e){
+    reportSubmitting=false;
+    showToast(e?.message==='login required'?'ログイン状態を確認してください':'報告送信に失敗しました');
+    return;
+  }
   closeReportModal();
   showToast('報告を送信しました。ありがとうございます。');
 }
@@ -2301,6 +2373,7 @@ function closeSimModal(){document.getElementById('simOverlay').classList.remove(
   document.getElementById(id).addEventListener('click',e=>{
     if(e.target.id===id){
       if(id==='tagEditOverlay') closeTagEditModal();
+      else if(id==='reportOverlay') closeReportModal();
       else document.getElementById(id).classList.remove('open');
     }
   });
@@ -2385,7 +2458,7 @@ function openRandomPlayer(){
   S.randomHistory=[];
   nextRandomSong();
 }
-function nextRandomSong(){
+async function nextRandomSong(){
   if(!S.songs||!S.songs.length){showToast('楽曲を読み込み中です...');return;}
   const available=S.pool.filter(s=>!S.randomHistory.includes(s.videoId)&&!s._private);
   if(!available.length){
@@ -2394,11 +2467,20 @@ function nextRandomSong(){
     const all=S.pool.filter(s=>!s._private);
     if(!all.length){showToast('楽曲がありません');return;}
   }
-  const pool2=S.pool.filter(s=>!S.randomHistory.includes(s.videoId)&&!s._private);
-  const song=pool2[Math.floor(Math.random()*pool2.length)];
-  if(!song){showRandomEnd();return;}
-  S.randomHistory.push(song.videoId);
-  showSongInPlayer(song);
+  let candidates=shuffle(S.pool.filter(s=>!S.randomHistory.includes(s.videoId)&&!s._private));
+  while(candidates.length){
+    const song=candidates.pop();
+    if(!song)break;
+    const playable=await probeSongAvailability(song);
+    if(!playable) continue;
+    S.randomHistory.push(song.videoId);
+    showSongInPlayer(song);
+    return;
+  }
+  const allPlayable=S.pool.filter(s=>!s._private);
+  if(!allPlayable.length){showToast('再生できる楽曲がありません');return;}
+  S.randomHistory=[];
+  await nextRandomSong();
 }
 function showSongInPlayer(song){
   S.currentPlayerVid=song.videoId;

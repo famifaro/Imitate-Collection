@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Imitate Collection — モデレーター</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/moderator/dashboard.css">
 <style>
 :root{
   --bg:#0f0f0f;--bg2:#181818;--s1:#212121;--s2:#2a2a2a;--s3:#333;
@@ -45,29 +46,13 @@ button{cursor:pointer;font-family:inherit;border:none;}
 .sb-item.active{background:rgba(26,110,232,.15);color:var(--ac2);}
 .sb-ic{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
 
-.content{margin-top:52px;margin-left:220px;padding:24px 18px 36px 24px;min-height:calc(100vh - 52px);width:calc(100vw - 220px);}
+.content{margin-top:52px;margin-left:220px;padding:24px 18px 36px 24px;min-height:calc(100vh - 52px);width:auto;flex:1;min-width:0;}
 
 /* ── PANELS ── */
 .panel{display:none;}
 .panel.active{display:block;}
 .panel-title{font-size:18px;font-weight:700;margin-bottom:4px;}
 .panel-sub{font-size:12px;color:var(--tx3);margin-bottom:20px;}
-
-/* ── STATS GRID ── */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
-.dash-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
-.dash-row.full{grid-column:1/-1;}
-@media(max-width:700px){.dash-row{grid-template-columns:repeat(2,1fr);}}
-.chart-wrap{background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:14px;margin-bottom:10px;}
-.chart-title{font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:10px;}
-.chart-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
-.chart-bar-label{font-size:9px;color:var(--tx3);width:36px;text-align:right;flex-shrink:0;font-family:'Space Mono',monospace;}
-.chart-bar-outer{flex:1;height:10px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
-.chart-bar-inner{height:100%;border-radius:3px;background:var(--ac);transition:width .3s;}
-.chart-bar-val{font-size:9px;color:var(--tx3);width:28px;text-align:right;font-family:'Space Mono',monospace;}
-.stat-card{background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:16px;}
-.stat-num{font-size:28px;font-weight:700;color:var(--ac2);font-family:'Space Mono',monospace;}
-.stat-label{font-size:11px;color:var(--tx3);margin-top:2px;}
 
 /* ── TABLE ── */
 .tbl-wrap{background:var(--bg2);border:1px solid var(--br);border-radius:10px;overflow:auto;}
@@ -121,8 +106,10 @@ button{cursor:pointer;font-family:inherit;border:none;}
   .sidebar{width:60px;}
   .sb-section,.sb-item span{display:none;}
   .sb-item{justify-content:center;padding:10px;}
-  .content{margin-left:60px;padding:14px;width:calc(100vw - 60px);}
-  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .content{margin-left:60px;padding:14px;}
+}
+@media(max-width:560px){
+  .content{margin-left:60px;max-width:100%;}
 }
 </style>
 </head>
@@ -190,7 +177,7 @@ button{cursor:pointer;font-family:inherit;border:none;}
       <div class="panel-title">ダッシュボード</div>
       <div class="panel-sub">Imitate Collection の概要</div>
       <div class="stats-grid" id="statsGrid"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;" id="dashBottom"></div>
+      <div id="dashBottom"></div>
     </div>
 
     <!-- REPORTS -->
@@ -265,7 +252,8 @@ button{cursor:pointer;font-family:inherit;border:none;}
         <textarea 
           id="tosEditor"
           style="
-          width: 150vh;
+          width: min(100%, 1100px);
+          max-width: 100%;
           height: 70vh;
           font-family:'Space Mono',monospace;
           font-size:12px;
@@ -289,7 +277,8 @@ button{cursor:pointer;font-family:inherit;border:none;}
         <textarea 
           id="privacyEditor"
           style="
-          width: 150vh;
+          width: min(100%, 1100px);
+          max-width: 100%;
           height: 70vh;
           font-family:'Space Mono',monospace;
           font-size:12px;
@@ -358,6 +347,7 @@ button{cursor:pointer;font-family:inherit;border:none;}
 
 <div class="toast" id="toast"></div>
 
+<script src="assets/moderator/dashboard.js"></script>
 <script>
 // ══════════════════════════════
 //  AUTH
@@ -385,6 +375,12 @@ let REMOTE_USERS=[];
 let REMOTE_STATS=null;
 let CURRENT_USER=null;
 let REMOTE_CONTACTS=[];
+const TAG_DIMS=[
+  {key:'mood',label:'明るさ',left:'暗い',right:'明るい',color:'#818cf8'},
+  {key:'rhythm',label:'リズム',left:'落ち着く',right:'乗れる',color:'#fbbf24'},
+  {key:'melody',label:'メロ',left:'無機質',right:'エモい',color:'#f472b6'},
+  {key:'origin',label:'本家度',left:'オリジナル',right:'すべあな',color:'#4ade80'},
+];
 
 function applyTheme(theme){
   const mode=theme==='light'?'light':'dark';
@@ -678,9 +674,6 @@ function renderPanel(id){
 function getAccessData(){
   try{return JSON.parse(localStorage.getItem('ic_access')||'{"total":0,"monthly":{},"uid_total":{},"uid_monthly":{},"daily":{}}');}catch(e){return{total:0,monthly:{},uid_total:{},uid_monthly:{},daily:{}};}
 }
-function getClickData(){
-  try{return JSON.parse(localStorage.getItem('ic_clicks')||'{}');}catch(e){return{};}
-}
 function getDailyStat(type){
   try{return JSON.parse(localStorage.getItem('ic_daily_'+type)||'{}');}catch(e){return{};}
 }
@@ -688,157 +681,27 @@ function getUidDaily(){
   try{return JSON.parse(localStorage.getItem('ic_uid_daily')||'{}');}catch(e){return{};}
 }
 
-function makeMiniChart(dailyData, color, days=14){
-  const today=new Date();
-  const labels=[];
-  const vals=[];
-  for(let i=days-1;i>=0;i--){
-    const d=new Date(today);
-    d.setDate(d.getDate()-i);
-    const key=d.toISOString().slice(0,10);
-    labels.push(key.slice(5)); // MM-DD
-    vals.push(dailyData[key]||0);
-  }
-  const maxV=Math.max(...vals,1);
-  return `<div class="chart-wrap">
-    <div style="display:flex;align-items:flex-end;gap:2px;height:48px;padding:0 2px;">
-      ${vals.map((v,i)=>`
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="${labels[i]}: ${v}">
-          <div style="flex:1;width:100%;display:flex;align-items:flex-end;">
-            <div style="width:100%;background:${color};border-radius:2px 2px 0 0;height:${Math.round(v/maxV*100)}%;min-height:${v>0?2:0}px;transition:height .3s;opacity:.85;"></div>
-          </div>
-        </div>`).join('')}
-    </div>
-    <div style="display:flex;gap:2px;padding:0 2px;margin-top:2px;">
-      ${labels.map((l,i)=>i%Math.ceil(days/5)===0?`<div style="flex:1;font-size:7px;color:var(--tx3);font-family:'Space Mono',monospace;text-align:center;">${l}</div>`:`<div style="flex:1;"></div>`).join('')}
-    </div>
-  </div>`;
-}
-
 function renderDashboard(){
-  const songs=getCache();
-  const tags=getTags();
-  const taggedCount=Object.keys(tags).length;
-  const reports=getReports();
-  const openReports=reports.filter(r=>!r.resolved).length;
-  const stats=getStats();
-  const summary=stats?.summary||{};
-
-  const acc=getAccessData();
-  const clicks=getClickData();
-  const ym=new Date().toISOString().slice(0,7);
-  const mAccess=acc.monthly?.[ym]||0;
-  const mUniq=Object.keys(acc.uid_monthly?.[ym]||{}).length;
-  const mClicks=Object.entries(clicks).reduce((s,[,v])=>typeof v==='number'?s:s,0);
-  // 月間クリック数: ic_daily_clicks から当月分合計
-  const dailyClicks=getDailyStat('clicks');
-  const mClicksCalc=Object.entries(dailyClicks).filter(([k])=>k.startsWith(ym)).reduce((s,[,v])=>s+v,0);
-  const tAccess=acc.total||0;
-  const tUniq=Object.keys(acc.uid_total||{}).length;
-  const tClicks=Object.values(dailyClicks).reduce((a,b)=>a+b,0);
-
-  // 棒グラフ用データ
-  const dailyAccess=acc.daily||{};
-  const uidDaily=getUidDaily();
-  const dailyUniq={};
-  Object.entries(uidDaily).forEach(([day,uids])=>{ dailyUniq[day]=Object.keys(uids).length; });
-  const loginDaily=Object.fromEntries((stats?.dailyLogins||[]).map(row=>[row.day,row.count]));
-  const activeDaily=Object.fromEntries((stats?.dailyActiveUsers||[]).map(row=>[row.day,row.count]));
-
-  document.getElementById('statsGrid').innerHTML=`
-    <!-- 登録動画数（全幅） -->
-    <div style="background:var(--bg2);border:1px solid rgba(26,110,232,.4);border-radius:10px;padding:16px;margin-bottom:10px;text-align:center;">
-      <div style="font-size:40px;font-weight:700;color:var(--ac2);font-family:'Space Mono',monospace;">${songs.length}</div>
-      <div style="font-size:12px;color:var(--tx3);margin-top:2px;">登録動画数</div>
-    </div>
-    <!-- 3列: タグ統計 -->
-    <div class="dash-row">
-      <div class="stat-card">
-        <div class="stat-num" style="color:#22c55e;">${taggedCount}</div>
-        <div class="stat-label">タグ登録済み楽曲</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" style="color:var(--tx3);">${songs.length-taggedCount}</div>
-        <div class="stat-label">タグ未登録楽曲</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" style="color:#f87171;">${openReports}</div>
-        <div class="stat-label">未処理の報告</div>
-      </div>
-    </div>
-    <!-- 3列: 月間 -->
-    <div class="dash-row">
-      <div class="stat-card"><div class="stat-num">${mAccess}</div><div class="stat-label">月間アクセス数</div></div>
-      <div class="stat-card"><div class="stat-num">${mUniq}</div><div class="stat-label">月間ユニーク数</div></div>
-      <div class="stat-card"><div class="stat-num">${mClicksCalc}</div><div class="stat-label">月間リンククリック</div></div>
-    </div>
-    <div class="dash-row">
-      <div class="stat-card"><div class="stat-num">${summary.monthlyLogins||0}</div><div class="stat-label">月間ログイン数</div></div>
-      <div class="stat-card"><div class="stat-num">${summary.monthlyActiveUsers||0}</div><div class="stat-label">月間ログインユーザー数</div></div>
-      <div class="stat-card"><div class="stat-num">${summary.currentSessions||0}</div><div class="stat-label">有効セッション数</div></div>
-    </div>
-    <!-- 3列: 累計 -->
-    <div class="dash-row">
-      <div class="stat-card"><div class="stat-num">${tAccess}</div><div class="stat-label">累計アクセス数</div></div>
-      <div class="stat-card"><div class="stat-num">${tUniq}</div><div class="stat-label">累計ユニーク数</div></div>
-      <div class="stat-card"><div class="stat-num">${tClicks}</div><div class="stat-label">累計リンククリック</div></div>
-    </div>
-    <div class="dash-row">
-      <div class="stat-card"><div class="stat-num">${summary.totalLogins||0}</div><div class="stat-label">累計ログイン数</div></div>
-      <div class="stat-card"><div class="stat-num">${summary.usersTotal||0}</div><div class="stat-label">登録ユーザー数</div></div>
-      <div class="stat-card"><div class="stat-num">${summary.bannedUsers||0}</div><div class="stat-label">BANユーザー数</div></div>
-    </div>
-    <!-- 棒グラフ 3列 -->
-    <div class="dash-row" style="margin-top:4px;">
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別アクセス数（14日）</div>
-        ${makeMiniChart(dailyAccess,'#4d94ff')}
-      </div>
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別ユニーク数（14日）</div>
-        ${makeMiniChart(dailyUniq,'#4ade80')}
-      </div>
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別クリック数（14日）</div>
-        ${makeMiniChart(dailyClicks,'#fbbf24')}
-      </div>
-    </div>
-    <div class="dash-row" style="margin-top:4px;">
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別ログイン数（30日）</div>
-        ${makeMiniChart(loginDaily,'#f472b6',30)}
-      </div>
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:6px;">日別ログインユーザー数（30日）</div>
-        ${makeMiniChart(activeDaily,'#22c55e',30)}
-      </div>
-      <div class="tbl-wrap" style="margin-top:20px;">
-        <table class="tbl">
-          <thead><tr><th>新規ユーザー</th><th>ユーザーID</th><th>登録日時</th></tr></thead>
-          <tbody>${(stats?.latestUsers||[]).map(u=>`<tr>
-            <td>${escH(u.displayName||u.username||u.id)}</td>
-            <td style="font-family:'Space Mono',monospace;font-size:10px;">${escH(u.id)}</td>
-            <td>${new Date(u.createdAt).toLocaleString('ja-JP')}</td>
-          </tr>`).join('')||'<tr><td colspan="3" style="color:var(--tx3);">まだユーザーがいません</td></tr>'}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  // カテゴリ集計
-  const cats={};
-  songs.forEach(s=>{if(s.category)cats[s.category]=(cats[s.category]||0)+1;});
-  const catRows=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  document.getElementById('dashBottom').innerHTML=`
-    <div class="tbl-wrap" style="margin-top:6px;">
-      <table class="tbl">
-        <thead><tr><th>カテゴリ</th><th>楽曲数</th><th>タグ済み</th></tr></thead>
-        <tbody>${catRows.map(([cat,n])=>{
-          const tc=Object.entries(tags).filter(([vid])=>{const s=songs.find(x=>x.videoId===vid);return s?.category===cat;}).length;
-          return `<tr><td>${escH(cat)}</td><td>${n}</td><td>${tc} (${n?Math.round(tc/n*100):0}%)</td></tr>`;
-        }).join('')}</tbody>
-      </table>
-    </div>`;
+  if(!window.moderatorDashboard){
+    const statsGrid=document.getElementById('statsGrid');
+    const dashBottom=document.getElementById('dashBottom');
+    if(statsGrid)statsGrid.innerHTML='<div class="dashboard-empty">ダッシュボード描画モジュールの読み込みに失敗しました</div>';
+    if(dashBottom)dashBottom.innerHTML='';
+    return;
+  }
+  window.moderatorDashboard.renderDashboard({
+    statsMount:document.getElementById('statsGrid'),
+    bottomMount:document.getElementById('dashBottom'),
+    songs:getCache(),
+    tags:getTags(),
+    reports:getReports(),
+    stats:getStats(),
+    remoteSongsUpdatedAt:REMOTE_SONGS_UPDATED_AT,
+    accessData:getAccessData(),
+    dailyClicks:getDailyStat('clicks'),
+    uidDaily:getUidDaily(),
+    escH,
+  });
 }
 
 // ══════════════════════════════
@@ -993,7 +856,7 @@ function renderTagPanel(){
         <input class="form-input" id="tagListQ" placeholder="VideoID・楽曲名・投稿者で検索..." style="width:300px;" oninput="renderTagPanel()" value="${escH(q)}">
       </div>
       <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th></th><th>楽曲 / VideoID</th><th>投稿者</th><th>暗さ</th><th>リズム</th><th>メロ</th><th>本家度</th><th>件数</th><th>操作</th></tr></thead>
+        <thead><tr><th></th><th>楽曲 / VideoID</th><th>投稿者</th>${TAG_DIMS.map(d=>`<th>${d.label}</th>`).join('')}<th>件数</th><th>操作</th></tr></thead>
         <tbody>${entries.slice(0,100).map(([vid,t])=>{
           const s=songs.find(x=>x.videoId===vid)||{};
           return `<tr>
@@ -1027,16 +890,18 @@ function renderTagPanel(){
             <label class="form-label">選択中</label>
             <div id="tagEdSelected" style="font-size:11px;color:var(--tx3);font-family:'Space Mono',monospace;">（未選択）</div>
           </div>
-          ${['mood','rhythm','melody','origin'].map((k,i)=>{
-            const labels=['暗さ','リズム','メロ','本家度'];const colors=['#818cf8','#fbbf24','#f472b6','#4ade80'];
+          ${TAG_DIMS.map(d=>{
             return `<div class="form-group" style="margin-bottom:8px;">
-              <label class="form-label" style="color:${colors[i]}">${labels[i]} (0-20)</label>
+              <label class="form-label" style="color:${d.color}">${d.label} (0-20)</label>
               <div style="display:flex;align-items:center;gap:8px;">
-                <input type="range" id="tagEdSl_${k}" min="0" max="20" value="10"
-                  style="-webkit-appearance:none;flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.15);cursor:pointer;accent-color:${colors[i]};"
-                  oninput="syncTagEd('${k}','sl')">
-                <input class="form-input" id="tagEd_${k}" type="number" min="0" max="20" value="10" style="width:56px;padding:4px 6px;text-align:center;"
-                  oninput="syncTagEd('${k}','num')">
+                <input type="range" id="tagEdSl_${d.key}" min="0" max="20" value="10"
+                  style="-webkit-appearance:none;flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.15);cursor:pointer;accent-color:${d.color};"
+                  oninput="syncTagEd('${d.key}','sl')">
+                <input class="form-input" id="tagEd_${d.key}" type="number" min="0" max="20" value="10" style="width:56px;padding:4px 6px;text-align:center;"
+                  oninput="syncTagEd('${d.key}','num')">
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--tx3);font-family:'Space Mono',monospace;margin-top:3px;">
+                <span>${d.left}</span><span>${d.right}</span>
               </div>
             </div>`;
           }).join('')}
