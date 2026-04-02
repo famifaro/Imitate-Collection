@@ -1,4 +1,4 @@
-import { ensureUserTables, json } from './_utils.js';
+import { ensureUserTables, forbidden, json, requireModerator, unauthorized } from './_utils.js';
 
 async function scalar(db, sql) {
   const row = await db.prepare(sql).first();
@@ -7,6 +7,10 @@ async function scalar(db, sql) {
 
 export async function onRequestGet(context) {
   await ensureUserTables(context.env.DB);
+  const user = await requireModerator(context.request, context.env);
+  if (!user) {
+    return context.request.headers.get('cookie') ? forbidden() : unauthorized();
+  }
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
   const sevenDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7).toISOString();

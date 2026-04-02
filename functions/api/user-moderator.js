@@ -1,4 +1,12 @@
-import { badRequest, ensureUserTables, json, readJson } from './_utils.js';
+import {
+  badRequest,
+  ensureUserTables,
+  forbidden,
+  json,
+  readJson,
+  requireModerator,
+  unauthorized,
+} from './_utils.js';
 
 function getAppUserId(value) {
   const userId = String(value || '').trim();
@@ -7,6 +15,11 @@ function getAppUserId(value) {
 
 export async function onRequestPost(context) {
   await ensureUserTables(context.env.DB);
+  const user = await requireModerator(context.request, context.env);
+  if (!user) {
+    return context.request.headers.get('cookie') ? forbidden() : unauthorized();
+  }
+
   const body = await readJson(context.request);
   const userId = getAppUserId(body?.userId);
   const moderator = body?.moderator !== false;

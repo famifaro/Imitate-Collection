@@ -1115,7 +1115,7 @@ function renderTagEdAdvPane(vid){
   const t=getTags()[vid];
   const adv=t?.adv||[];
   const advVotes=t?.advVotes||{};
-  const ADV_TAG_GROUPS=JSON.parse(localStorage.getItem('ic_adv_tag_groups')||'null')||getDefaultAdvGroups();
+  const ADV_TAG_GROUPS=getAdvGroups();
   const all=ADV_TAG_GROUPS.flatMap(g=>g.t);
   area.innerHTML=ADV_TAG_GROUPS.map(g=>`
     <div style="margin-bottom:10px;">
@@ -1466,7 +1466,20 @@ function saveSettings(){
   if(adminToken)localStorage.setItem(ADMIN_TOKEN_KEY,adminToken);
   showToast('設定を保存しました');
 }
-function clearAllTags(){setTags({});showToast('全タグデータを削除しました');}
+async function clearAllTags(){
+  const vids=Object.keys(getTags());
+  if(!vids.length){showToast('削除対象のタグデータはありません');return;}
+  try{
+    for(const vid of vids){
+      await apiFetch('/api/tag-delete',{method:'POST',body:{videoId:vid}});
+    }
+    await syncRemoteData();
+    renderPanel(document.querySelector('.sb-item.active')?.dataset.panel||'dashboard');
+    showToast(`全タグデータを削除しました (${vids.length}件)`);
+  }catch(e){
+    showToast('全タグデータの削除に失敗しました');
+  }
+}
 
 // ══════════════════════════════
 //  TOAST
@@ -1564,7 +1577,7 @@ const MOD_ADV_GROUPS=[
 // カスタムタグを含む全グループを返す
 function getAllAdvGroups(){
   const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
-  const groups=[...MOD_ADV_GROUPS.map(g=>({...g,t:[...g.t]}))];
+  const groups=[...getAdvGroups().map(g=>({...g,t:[...g.t]}))];
   custom.forEach(({group,tag})=>{
     const g=groups.find(x=>x.g===group);
     if(g){if(!g.t.includes(tag))g.t.push(tag);}
@@ -1650,7 +1663,7 @@ function renderAdvCfgPanel(el){
           <label class="form-label">タグ名</label>
           <input class="form-input" id="newTagName" placeholder="タグ名を入力" style="width:100%;">
         </div>
-        <button class="btn btn-pri" onclick="addAdvTag()">追加する</button>
+        <button class="btn btn-pri" onclick="addCustomAdvTag()">追加する</button>
       </div>
       <!-- 右: 追加済みカスタムタグ一覧 -->
       <div>
@@ -1660,7 +1673,7 @@ function renderAdvCfgPanel(el){
           : custom.map((item,idx)=>`
             <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--br);">
               <span style="font-size:12px;">${escH(item.group)} / <strong>${escH(item.tag)}</strong></span>
-              <button class="btn btn-danger" style="font-size:10px;padding:3px 8px;" onclick="removeAdvTag(${idx})">削除</button>
+              <button class="btn btn-danger" style="font-size:10px;padding:3px 8px;" onclick="removeCustomAdvTag(${idx})">削除</button>
             </div>`).join('')
         }
       </div>
@@ -1671,7 +1684,7 @@ function toggleNewGroupInput(){
   const wrap=document.getElementById('newGroupNameWrap');
   if(wrap)wrap.style.display=sel?.value==='__new'?'block':'none';
 }
-function addAdvTag(){
+function addCustomAdvTag(){
   const sel=document.getElementById('newTagGroup');
   let group=sel?.value==='__new'
     ?(document.getElementById('newGroupName')?.value||'').trim()
@@ -1685,7 +1698,7 @@ function addAdvTag(){
   showToast(`「${group} / ${tag}」を追加しました`);
   showTagTab('adv_cfg');
 }
-function removeAdvTag(idx){
+function removeCustomAdvTag(idx){
   const custom=JSON.parse(localStorage.getItem('ic_custom_adv_tags')||'[]');
   const removed=custom.splice(idx,1)[0];
   localStorage.setItem('ic_custom_adv_tags',JSON.stringify(custom));

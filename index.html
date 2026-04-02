@@ -940,7 +940,13 @@ function getMyAdvTags(vid){
   return S.myAdvTags[vid]||[];
 }
 function getEditableTagValues(vid){
-  return getTag(vid)||null;
+  return getMyTag(vid)||getTag(vid)||null;
+}
+function getEditableAdvTags(vid){
+  const mine=getMyAdvTags(vid);
+  if(mine&&mine.length)return [...mine];
+  const tag=getTag(vid);
+  return tag?.adv?[...tag.adv]:[];
 }
 function applyTheme(theme){
   const mode=theme==='light'?'light':'dark';
@@ -1902,6 +1908,7 @@ function openTagEditModal(vid){
   currentTagEditVid=vid;
   const song=S.songs.find(s=>s.videoId===vid)||{};
   const tag=getTag(vid);
+  const editableTag=getEditableTagValues(vid);
   const meta=S.ytMeta[vid]||{};
   const title=(song.title&&song.title.trim()?song.title:null)||meta.title||'(タイトル不明)';
   const artist=meta.channelName||song.artist||'';
@@ -1912,10 +1919,14 @@ function openTagEditModal(vid){
   document.getElementById('tagEditArtist').textContent=artist;
   document.getElementById('tagEditSub').textContent=artist+(song.category?` • ${song.category}`:'');
   document.getElementById('tagEditNote').textContent=
-    tag&&tag.votes ? `${tag.votes}件の保存データの平均値${isEdit?' (編集中)':''}` : '保存済みタグなし';
+    getMyTag(vid)
+      ? `あなたの保存値を編集中${isEdit?' (編集中)':''}`
+      : tag&&tag.votes
+        ? `${tag.votes}件の保存データの平均値${isEdit?' (編集中)':''}`
+        : '保存済みタグなし';
 
   tagEditPending={};
-  TAG_DIMS.forEach(d=>{tagEditPending[d.key]=tag?(tag[d.key]??10):10;});
+  TAG_DIMS.forEach(d=>{tagEditPending[d.key]=editableTag?(editableTag[d.key]??10):10;});
 
   document.getElementById('tagEditSliders').innerHTML=TAG_DIMS.map(d=>`
     <div style="margin-bottom:10px;">
@@ -1966,7 +1977,7 @@ function openAdvModal(vid){
 
 function renderAdvChips(bodyId,vid){
   const tag=getTag(vid);
-  const sel=tag?.adv||[];
+  const sel=getEditableAdvTags(vid);
   const body=document.getElementById(bodyId);
   if(!body)return;
   const isEdit=S.sessionVoted.has('adv_'+vid);

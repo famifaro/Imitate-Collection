@@ -1,7 +1,11 @@
-import { canModerate, ensureUserTables, json } from './_utils.js';
+import { canModerate, ensureUserTables, forbidden, json, requireModerator, unauthorized } from './_utils.js';
 
 export async function onRequestGet(context) {
   await ensureUserTables(context.env.DB);
+  const currentUser = await requireModerator(context.request, context.env);
+  if (!currentUser) {
+    return context.request.headers.get('cookie') ? forbidden() : unauthorized();
+  }
   const rows = await context.env.DB.prepare(
     `WITH known_user_ids AS (
       SELECT id AS user_id FROM users

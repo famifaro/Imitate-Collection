@@ -1,6 +1,12 @@
-import { json } from './_utils.js';
+import { ensureUserTables, forbidden, json, requireModerator, unauthorized } from './_utils.js';
 
 export async function onRequestGet(context) {
+  await ensureUserTables(context.env.DB);
+  const user = await requireModerator(context.request, context.env);
+  if (!user) {
+    return context.request.headers.get('cookie') ? forbidden() : unauthorized();
+  }
+
   const rows = await context.env.DB.prepare(
     `SELECT id, video_id, user_id, name, contact, type, comment, resolved, created_at
      FROM reports

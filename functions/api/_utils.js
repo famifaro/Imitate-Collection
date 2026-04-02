@@ -299,6 +299,12 @@ export async function requireActiveUser(request, env) {
   return user;
 }
 
+export async function requireModerator(request, env) {
+  const user = await requireActiveUser(request, env);
+  if (!user || !user.canModerate) return null;
+  return user;
+}
+
 function emptyTagAggregate() {
   return {
     mood: 10,

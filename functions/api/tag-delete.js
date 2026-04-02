@@ -1,6 +1,21 @@
-import { badRequest, getVideoId, json, readJson } from './_utils.js';
+import {
+  badRequest,
+  ensureUserTables,
+  forbidden,
+  getVideoId,
+  json,
+  readJson,
+  requireModerator,
+  unauthorized,
+} from './_utils.js';
 
 export async function onRequestPost(context) {
+  await ensureUserTables(context.env.DB);
+  const user = await requireModerator(context.request, context.env);
+  if (!user) {
+    return context.request.headers.get('cookie') ? forbidden() : unauthorized();
+  }
+
   const body = await readJson(context.request);
   const videoId = getVideoId(body?.videoId);
   if (!videoId) return badRequest('videoId is required');
